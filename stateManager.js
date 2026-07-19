@@ -4,10 +4,12 @@ const cache = new NodeCache({ stdTTL: 900, checkperiod: 120 });
 
 const STATES = {
     IDLE: 'IDLE',
-    ASK_NAME: 'ASK_NAME',
-    ASK_AGE: 'ASK_AGE',
+    CHOOSE_AARTI: 'CHOOSE_AARTI',
     ASK_DATE: 'ASK_DATE',
     CHOOSE_SLOT: 'CHOOSE_SLOT',
+    ASK_PHOTO: 'ASK_PHOTO',
+    ASK_NAME: 'ASK_NAME',
+    ASK_AADHAAR: 'ASK_AADHAAR',
     CONFIRM: 'CONFIRM'
 };
 

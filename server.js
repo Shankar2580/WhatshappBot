@@ -49,15 +49,20 @@ app.post('/webhook', async (req, res) => {
                 
                 let text = null;
                 let buttonPayload = null;
+                let imagePayload = null;
 
                 if (message.type === 'text') {
                     text = message.text.body;
                 } else if (message.type === 'interactive' && message.interactive.type === 'button_reply') {
                     buttonPayload = message.interactive.button_reply.id;
+                } else if (message.type === 'interactive' && message.interactive.type === 'list_reply') {
+                    buttonPayload = message.interactive.list_reply.id;
+                } else if (message.type === 'image') {
+                    imagePayload = message.image.id;
                 }
 
                 // Process message asynchronously
-                await messageHandler.processMessage(phone, text, buttonPayload);
+                await messageHandler.processMessage(phone, text, buttonPayload, imagePayload);
             }
         }
     } catch (error) {

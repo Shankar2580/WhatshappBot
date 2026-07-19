@@ -52,12 +52,35 @@ async function sendSlotButtons(phone, date, buttons) {
     await sendInteractiveButtons(phone, `Available slots for ${date}. Please choose one:`, buttons);
 }
 
-async function sendConfirmationButtons(phone, name, age, date, slot) {
+async function sendListMessage(phone, bodyText, buttonText, sections) {
+    try {
+        await axios.post(BASE_URL, {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'list',
+                header: { type: 'text', text: 'Ujjain Pooja Booking 🙏' },
+                body: { text: bodyText },
+                footer: { text: 'Shri Mahakaleshwar Temple' },
+                action: {
+                    button: buttonText,
+                    sections: sections
+                }
+            }
+        }, { headers });
+    } catch (error) {
+        console.error('Error sending list message:', error?.response?.data || error.message);
+    }
+}
+
+async function sendConfirmationButtons(phone, aarti_type, name, aadhaar, date, slot) {
     const summary = `Booking Summary:
-Name: ${name}
-Age: ${age}
-Date: ${date}
-Time: ${slot}
+🙏 Aarti: ${aarti_type}
+👤 Name: ${name}
+🆔 Aadhaar: ${aadhaar}
+📅 Date: ${date}
+⏰ Time: ${slot}
 
 Do you want to confirm?`;
 
@@ -73,5 +96,6 @@ module.exports = {
     sendTextMessage,
     sendSlotButtons,
     sendConfirmationButtons,
-    sendInteractiveButtons
+    sendInteractiveButtons,
+    sendListMessage
 };

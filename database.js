@@ -15,12 +15,15 @@ function initDb() {
             );
         `);
         
+        // We will create a fresh table for the new schema
         db.run(`
-            CREATE TABLE IF NOT EXISTS bookings (
+            CREATE TABLE IF NOT EXISTS bookings_v2 (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_phone TEXT NOT NULL,
+                aarti_type TEXT NOT NULL,
                 name TEXT NOT NULL,
-                age INTEGER NOT NULL,
+                aadhaar TEXT NOT NULL,
+                photo_id TEXT NOT NULL,
                 booking_date TEXT NOT NULL,
                 slot_time TEXT NOT NULL,
                 status TEXT DEFAULT 'confirmed',
@@ -54,7 +57,7 @@ function getAvailableSlots(date) {
             FROM slots s
             LEFT JOIN (
                 SELECT slot_time, COUNT(*) as booked_count
-                FROM bookings
+                FROM bookings_v2
                 WHERE booking_date = ? AND status = 'confirmed'
                 GROUP BY slot_time
             ) b ON s.time_range = b.slot_time
@@ -69,12 +72,12 @@ function getAvailableSlots(date) {
 
 function saveBooking(bookingData) {
     return new Promise((resolve, reject) => {
-        const { user_phone, name, age, booking_date, slot_time } = bookingData;
+        const { user_phone, aarti_type, name, aadhaar, photo_id, booking_date, slot_time } = bookingData;
         const stmt = db.prepare(`
-            INSERT INTO bookings (user_phone, name, age, booking_date, slot_time)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO bookings_v2 (user_phone, aarti_type, name, aadhaar, photo_id, booking_date, slot_time)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         `);
-        stmt.run([user_phone, name, age, booking_date, slot_time], function(err) {
+        stmt.run([user_phone, aarti_type, name, aadhaar, photo_id, booking_date, slot_time], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
         });
@@ -85,7 +88,7 @@ function saveBooking(bookingData) {
 function checkDuplicate(phone, date, slot) {
     return new Promise((resolve, reject) => {
         const query = `
-            SELECT COUNT(*) as count FROM bookings
+            SELECT COUNT(*) as count FROM bookings_v2
             WHERE user_phone = ? AND booking_date = ? AND slot_time = ? AND status = 'confirmed'
         `;
         db.get(query, [phone, date, slot], (err, row) => {
