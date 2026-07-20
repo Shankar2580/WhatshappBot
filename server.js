@@ -45,6 +45,15 @@ app.post('/webhook', async (req, res) => {
                 body.entry[0].changes[0].value.messages[0]
             ) {
                 const message = body.entry[0].changes[0].value.messages[0];
+                
+                // Ignore messages older than 5 minutes to prevent ghost retries from Meta
+                const messageTime = parseInt(message.timestamp, 10);
+                const currentTime = Math.floor(Date.now() / 1000);
+                if (currentTime - messageTime > 300) {
+                    console.log('Ignored old delayed message:', message.id);
+                    return;
+                }
+                
                 const phone = message.from;
                 
                 let text = null;
