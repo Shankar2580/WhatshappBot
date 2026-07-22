@@ -8,6 +8,7 @@ const PORT = process.env.PORT || 3000;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 app.use(bodyParser.json());
+app.use(express.static('public')); // Allow viewing downloaded photos in the browser
 
 // Webhook Verification (GET)
 app.get('/webhook', (req, res) => {
