@@ -6,6 +6,8 @@ const db = new sqlite3.Database(dbPath);
 
 function initDb() {
     db.serialize(() => {
+        db.run('PRAGMA journal_mode = WAL;');
+        
         db.run(`
             CREATE TABLE IF NOT EXISTS slots (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,6 +32,10 @@ function initDb() {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         `);
+
+        // Create indexes for high-speed lookups
+        db.run('CREATE INDEX IF NOT EXISTS idx_bookings_date_status ON bookings_v2 (booking_date, status);');
+        db.run('CREATE INDEX IF NOT EXISTS idx_bookings_duplicate_check ON bookings_v2 (user_phone, booking_date, slot_time, status);');
 
         db.get('SELECT COUNT(*) as count FROM slots', (err, row) => {
             if (row && row.count === 0) {

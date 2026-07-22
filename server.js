@@ -34,9 +34,9 @@ app.post('/webhook', async (req, res) => {
 
     try {
         const body = req.body;
-        console.log('Received Webhook:', JSON.stringify(body, null, 2));
+        // Commented out heavy logging to speed up disk I/O in production
+        // console.log('Received Webhook:', JSON.stringify(body, null, 2));
 
-        
         if (body.object === 'whatsapp_business_account') {
             if (
                 body.entry &&
@@ -70,8 +70,8 @@ app.post('/webhook', async (req, res) => {
                     imagePayload = message.image.id;
                 }
 
-                // Process message asynchronously
-                await messageHandler.processMessage(phone, text, buttonPayload, imagePayload);
+                // Process message asynchronously in the background (Do NOT await, this frees up the event loop)
+                messageHandler.processMessage(phone, text, buttonPayload, imagePayload).catch(err => console.error(err));
             }
         }
     } catch (error) {

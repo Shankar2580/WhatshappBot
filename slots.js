@@ -1,8 +1,18 @@
 const database = require('./database');
 
+const NodeCache = require('node-cache');
+const slotCache = new NodeCache({ stdTTL: 10 }); // Cache slots for 10 seconds to drastically reduce DB load
+
 async function getAvailableSlotsForDate(date) {
     try {
-        const availableSlots = await database.getAvailableSlots(date);
+        const cacheKey = `slots_${date}`;
+        let availableSlots = slotCache.get(cacheKey);
+
+        if (!availableSlots) {
+            availableSlots = await database.getAvailableSlots(date);
+            slotCache.set(cacheKey, availableSlots);
+        }
+
         if (!availableSlots || availableSlots.length === 0) {
             return [];
         }

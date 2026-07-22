@@ -1,23 +1,30 @@
 require('dotenv').config();
 const axios = require('axios');
 
+const https = require('https');
+
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const BASE_URL = `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/messages`;
 
-const headers = {
-    'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
-    'Content-Type': 'application/json'
-};
+// Enable Keep-Alive to dramatically reduce latency on outgoing Meta API requests
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 });
+const api = axios.create({
+    headers: {
+        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+        'Content-Type': 'application/json'
+    },
+    httpsAgent: httpsAgent
+});
 
 async function sendTextMessage(phone, text) {
     try {
-        await axios.post(BASE_URL, {
+        await api.post(BASE_URL, {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'text',
             text: { body: text }
-        }, { headers });
+        });
     } catch (error) {
         console.error('Error sending text message:', error?.response?.data || error.message);
     }
@@ -25,7 +32,7 @@ async function sendTextMessage(phone, text) {
 
 async function sendInteractiveButtons(phone, bodyText, buttons) {
     try {
-        await axios.post(BASE_URL, {
+        await api.post(BASE_URL, {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'interactive',
@@ -42,7 +49,7 @@ async function sendInteractiveButtons(phone, bodyText, buttons) {
                     }))
                 }
             }
-        }, { headers });
+        });
     } catch (error) {
         console.error('Error sending buttons:', error?.response?.data || error.message);
     }
@@ -54,7 +61,7 @@ async function sendSlotButtons(phone, date, buttons) {
 
 async function sendListMessage(phone, bodyText, buttonText, sections) {
     try {
-        await axios.post(BASE_URL, {
+        await api.post(BASE_URL, {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'interactive',
@@ -68,7 +75,7 @@ async function sendListMessage(phone, bodyText, buttonText, sections) {
                     sections: sections
                 }
             }
-        }, { headers });
+        });
     } catch (error) {
         console.error('Error sending list message:', error?.response?.data || error.message);
     }
