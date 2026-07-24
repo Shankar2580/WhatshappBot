@@ -55,8 +55,8 @@ async function sendInteractiveButtons(phone, bodyText, buttons) {
     }
 }
 
-async function sendSlotButtons(phone, date, buttons) {
-    await sendInteractiveButtons(phone, `Available slots for ${date}. Please choose one:`, buttons);
+async function sendSlotButtons(phone, bodyText, buttons) {
+    await sendInteractiveButtons(phone, bodyText, buttons);
 }
 
 async function sendListMessage(phone, bodyText, buttonText, sections) {
@@ -81,22 +81,41 @@ async function sendListMessage(phone, bodyText, buttonText, sections) {
     }
 }
 
-async function sendConfirmationButtons(phone, aarti_type, name, aadhaar, date, slot) {
-    const summary = `Booking Summary:
-🙏 Aarti: ${aarti_type}
-👤 Name: ${name}
-🆔 Aadhaar: ${aadhaar}
-📅 Date: ${date}
-⏰ Time: ${slot}
-
-Do you want to confirm?`;
-
+async function sendConfirmationButtons(phone, bodyText, btnYesLabel, btnNoLabel) {
     const buttons = [
-        { id: 'confirm_yes', title: 'Yes' },
-        { id: 'confirm_no', title: 'No' }
+        { id: 'confirm_yes', title: btnYesLabel || 'Yes' },
+        { id: 'confirm_no', title: btnNoLabel || 'No' }
     ];
+    await sendInteractiveButtons(phone, bodyText, buttons);
+}
 
-    await sendInteractiveButtons(phone, summary, buttons);
+async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken) {
+    try {
+        await api.post(BASE_URL, {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'flow',
+                body: { text: bodyText },
+                action: {
+                    name: 'flow',
+                    parameters: {
+                        flow_message_version: '3',
+                        flow_token: flowToken,
+                        flow_id: flowId,
+                        flow_cta: buttonText,
+                        flow_action: 'navigate',
+                        flow_action_payload: {
+                            screen: 'date_selection_screen'
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error sending flow message:', error?.response?.data || error.message);
+    }
 }
 
 module.exports = {
@@ -104,5 +123,6 @@ module.exports = {
     sendSlotButtons,
     sendConfirmationButtons,
     sendInteractiveButtons,
-    sendListMessage
+    sendListMessage,
+    sendFlowMessage
 };

@@ -67,6 +67,14 @@ app.post('/webhook', async (req, res) => {
                     buttonPayload = message.interactive.button_reply.id;
                 } else if (message.type === 'interactive' && message.interactive.type === 'list_reply') {
                     buttonPayload = message.interactive.list_reply.id;
+                } else if (message.type === 'interactive' && message.interactive.type === 'nfm_reply') {
+                    // This handles the WhatsApp Flow JSON response
+                    try {
+                        const flowJson = JSON.parse(message.interactive.nfm_reply.response_json);
+                        text = JSON.stringify(flowJson); // Pass the JSON stringified as the text parameter
+                    } catch (e) {
+                        console.error('Error parsing flow response:', e);
+                    }
                 } else if (message.type === 'image') {
                     imagePayload = message.image.id;
                 }
