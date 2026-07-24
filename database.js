@@ -19,20 +19,13 @@ function initDb() {
         
         // We will create a fresh table for the new schema
         db.run(`
-            CREATE TABLE IF NOT EXISTS bookings_v4 (
+            CREATE TABLE IF NOT EXISTS bookings_v5 (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_phone TEXT NOT NULL,
                 language TEXT NOT NULL,
                 aarti_type TEXT NOT NULL,
                 num_people INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                aadhaar TEXT NOT NULL,
-                kyc_request_id TEXT,
-                kyc_verified_name TEXT,
-                kyc_gender TEXT,
-                kyc_dob TEXT,
-                kyc_address TEXT,
-                kyc_photo_url TEXT,
+                guests_data TEXT NOT NULL,
                 photo_id TEXT NOT NULL,
                 booking_date TEXT NOT NULL,
                 slot_time TEXT NOT NULL,
@@ -42,8 +35,8 @@ function initDb() {
         `);
 
         // Create indexes for high-speed lookups
-        db.run('CREATE INDEX IF NOT EXISTS idx_bookings_date_status ON bookings_v4 (booking_date, status);');
-        db.run('CREATE INDEX IF NOT EXISTS idx_bookings_duplicate_check ON bookings_v4 (user_phone, booking_date, slot_time, status);');
+        db.run('CREATE INDEX IF NOT EXISTS idx_bookings_date_status ON bookings_v5 (booking_date, status);');
+        db.run('CREATE INDEX IF NOT EXISTS idx_bookings_duplicate_check ON bookings_v5 (user_phone, booking_date, slot_time, status);');
 
         db.get('SELECT COUNT(*) as count FROM slots', (err, row) => {
             if (row && row.count === 0) {
@@ -71,7 +64,7 @@ function getAvailableSlots(date) {
             FROM slots s
             LEFT JOIN (
                 SELECT slot_time, COUNT(*) as booked_count
-                FROM bookings_v4
+                FROM bookings_v5
                 WHERE booking_date = ? AND status = 'confirmed'
                 GROUP BY slot_time
             ) b ON s.time_range = b.slot_time
@@ -87,22 +80,19 @@ function getAvailableSlots(date) {
 function saveBooking(bookingData) {
     return new Promise((resolve, reject) => {
         const { 
-            user_phone, language, aarti_type, num_people, name, aadhaar, 
-            kyc_request_id, kyc_verified_name, kyc_gender, kyc_dob, kyc_address, kyc_photo_url, 
+            user_phone, language, aarti_type, num_people, guests_data, 
             photo_id, booking_date, slot_time 
         } = bookingData;
         
         const stmt = db.prepare(`
-            INSERT INTO bookings_v4 (
-                user_phone, language, aarti_type, num_people, name, aadhaar, 
-                kyc_request_id, kyc_verified_name, kyc_gender, kyc_dob, kyc_address, kyc_photo_url, 
+            INSERT INTO bookings_v5 (
+                user_phone, language, aarti_type, num_people, guests_data,
                 photo_id, booking_date, slot_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run([
-            user_phone, language, aarti_type, num_people, name, aadhaar, 
-            kyc_request_id, kyc_verified_name, kyc_gender, kyc_dob, kyc_address, kyc_photo_url, 
+            user_phone, language, aarti_type, num_people, guests_data, 
             photo_id, booking_date, slot_time
         ], function(err) {
             if (err) reject(err);
@@ -115,7 +105,7 @@ function saveBooking(bookingData) {
 function checkDuplicate(phone, date, slot) {
     return new Promise((resolve, reject) => {
         const query = `
-            SELECT COUNT(*) as count FROM bookings_v4
+            SELECT COUNT(*) as count FROM bookings_v5
             WHERE user_phone = ? AND booking_date = ? AND slot_time = ? AND status = 'confirmed'
         `;
         db.get(query, [phone, date, slot], (err, row) => {

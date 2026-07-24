@@ -78,7 +78,8 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const day = String(date.getDate()).padStart(2, '0');
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const year = date.getFullYear();
-                const dateStr = `${day}/${month}/${year}`;
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const dateStr = `${day}/${month}/${year} (${dayName})`;
                 dateRows.push({ id: dateStr, title: dateStr, description: date.toDateString() });
             }
 
@@ -152,19 +153,21 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
     if (state === STATES.ASK_NUM_PEOPLE) {
         const num = parseInt(msgText, 10);
-        if (!isNaN(num) && num > 0 && num <= 10) {
-            stateManager.setTempData(phone, { numPeople: num });
-            stateManager.setState(phone, STATES.ASK_NAME);
-            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_name'));
+        if (!isNaN(num) && num > 0 && num <= 4) {
+            stateManager.setTempData(phone, { numPeople: num, guests: [], currentGuestIndex: 1 });
+            stateManager.setState(phone, STATES.ASK_GUEST_NAME);
+            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_guest_name', 1));
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_num_people'));
         }
         return;
     }
 
-    if (state === STATES.ASK_NAME) {
+    if (state === STATES.ASK_GUEST_NAME) {
         if (msgText.length >= 2) {
-            stateManager.setTempData(phone, { name: text });
+            const data = stateManager.getTempData(phone);
+            data.currentGuestEnteredName = text;
+            stateManager.setTempData(phone, data);
             stateManager.setState(phone, STATES.ASK_AADHAAR);
             await whatsappApi.sendTextMessage(phone, t(lang, 'ask_aadhaar', text));
         } else {
@@ -217,16 +220,29 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     
                     const photoUrl = response.result.download_links ? response.result.download_links.photo : '';
 
-                    stateManager.setTempData(phone, {
-                        kycVerifiedName: verifiedName,
-                        kycGender: gender,
-                        kycDob: dob,
-                        kycAddress: addressStr,
-                        kycPhotoUrl: photoUrl
+                    data.guests.push({
+                        entered_name: data.currentGuestEnteredName,
+                        kyc_verified_name: verifiedName,
+                        aadhaar: data.aadhaar,
+                        kyc_request_id: data.kycRequestId,
+                        gender: gender,
+                        dob: dob,
+                        address: addressStr,
+                        photo_url: photoUrl
                     });
-                    
-                    stateManager.setState(phone, STATES.ASK_PHOTO);
+
                     await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
+
+                    if (data.currentGuestIndex < data.numPeople) {
+                        data.currentGuestIndex++;
+                        stateManager.setTempData(phone, data);
+                        stateManager.setState(phone, STATES.ASK_GUEST_NAME);
+                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_guest_name', data.currentGuestIndex));
+                    } else {
+                        stateManager.setTempData(phone, data);
+                        stateManager.setState(phone, STATES.ASK_PHOTO);
+                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
+                    }
                 } else {
                     await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
                 }
@@ -245,7 +261,8 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             stateManager.setState(phone, STATES.CONFIRM);
             
             const data = stateManager.getTempData(phone);
-            const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, data.name, data.aadhaar);
+            const namesStr = data.guests.map(g => g.kyc_verified_name).join(', ');
+            const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
             await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_photo'));
@@ -266,14 +283,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     language: lang,
                     aarti_type: data.aarti,
                     num_people: data.numPeople,
-                    name: data.name,
-                    aadhaar: data.aadhaar,
-                    kyc_request_id: data.kycRequestId,
-                    kyc_verified_name: data.kycVerifiedName,
-                    kyc_gender: data.kycGender,
-                    kyc_dob: data.kycDob,
-                    kyc_address: data.kycAddress,
-                    kyc_photo_url: data.kycPhotoUrl,
+                    guests_data: JSON.stringify(data.guests),
                     photo_id: data.photoId,
                     booking_date: data.date,
                     slot_time: data.slot
