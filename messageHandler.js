@@ -81,7 +81,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const rawDateStr = `${day}/${month}/${year}`;
                 const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
                 const dateStr = `${rawDateStr} (${dayName})`;
-                dateRows.push({ id: rawDateStr, title: dateStr, description: date.toDateString() });
+                dateRows.push({ id: rawDateStr, title: dateStr });
             }
 
             const sections = [{
