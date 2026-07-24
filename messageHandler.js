@@ -78,9 +78,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const day = String(date.getDate()).padStart(2, '0');
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const year = date.getFullYear();
+                const rawDateStr = `${day}/${month}/${year}`;
                 const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-                const dateStr = `${day}/${month}/${year} (${dayName})`;
-                dateRows.push({ id: dateStr, title: dateStr, description: date.toDateString() });
+                const dateStr = `${rawDateStr} (${dayName})`;
+                dateRows.push({ id: rawDateStr, title: dateStr, description: date.toDateString() });
             }
 
             const sections = [{
