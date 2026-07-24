@@ -4,6 +4,7 @@ const whatsappApi = require('./whatsappApi');
 const slots = require('./slots');
 const database = require('./database');
 const { t } = require('./translations');
+const kycBoxApi = require('./kycBoxApi');
 
 async function processMessage(phone, text, buttonPayload, imagePayload) {
     const msgText = (text || '').trim().toLowerCase();
@@ -175,10 +176,65 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.ASK_AADHAAR) {
         if (/^\d{12}$/.test(msgText)) {
             stateManager.setTempData(phone, { aadhaar: msgText });
-            stateManager.setState(phone, STATES.ASK_PHOTO);
-            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
+            await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
+            
+            try {
+                const response = await kycBoxApi.generateOtp(msgText);
+                if (response.result && response.result.otp_sent) {
+                    stateManager.setTempData(phone, { kycRequestId: response.result.request_id });
+                    stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
+                } else {
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_failed'));
+                }
+            } catch (error) {
+                await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_failed'));
+            }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
+        }
+        return;
+    }
+
+    if (state === STATES.ASK_AADHAAR_OTP) {
+        if (/^\d{6}$/.test(msgText)) {
+            const data = stateManager.getTempData(phone);
+            try {
+                const response = await kycBoxApi.submitOtp(data.kycRequestId, msgText);
+                
+                if (response.result && response.result.status === 'completed') {
+                    // Extract KYC data
+                    const verifiedName = response.result.full_name;
+                    const gender = response.result.gender;
+                    const dob = response.result.dob;
+                    
+                    // Format address safely
+                    let addressStr = '';
+                    if (response.result.address) {
+                        const addr = response.result.address;
+                        addressStr = [addr.house, addr.street, addr.loc, addr.dist, addr.state, response.result.pincode].filter(Boolean).join(', ');
+                    }
+                    
+                    const photoUrl = response.result.download_links ? response.result.download_links.photo : '';
+
+                    stateManager.setTempData(phone, {
+                        kycVerifiedName: verifiedName,
+                        kycGender: gender,
+                        kycDob: dob,
+                        kycAddress: addressStr,
+                        kycPhotoUrl: photoUrl
+                    });
+                    
+                    stateManager.setState(phone, STATES.ASK_PHOTO);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
+                } else {
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
+                }
+            } catch (error) {
+                await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
+            }
+        } else {
+            await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
         }
         return;
     }
@@ -212,6 +268,12 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     num_people: data.numPeople,
                     name: data.name,
                     aadhaar: data.aadhaar,
+                    kyc_request_id: data.kycRequestId,
+                    kyc_verified_name: data.kycVerifiedName,
+                    kyc_gender: data.kycGender,
+                    kyc_dob: data.kycDob,
+                    kyc_address: data.kycAddress,
+                    kyc_photo_url: data.kycPhotoUrl,
                     photo_id: data.photoId,
                     booking_date: data.date,
                     slot_time: data.slot
