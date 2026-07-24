@@ -165,7 +165,8 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     }
 
     if (state === STATES.ASK_GUEST_NAME) {
-        if (msgText.length >= 2) {
+        const nameRegex = /^[A-Za-z\s\.'\-]+$/;
+        if (msgText.length >= 2 && nameRegex.test(msgText)) {
             const data = stateManager.getTempData(phone);
             data.currentGuestEnteredName = text;
             stateManager.setTempData(phone, data);
