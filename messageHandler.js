@@ -5,6 +5,8 @@ const slots = require('./slots');
 const database = require('./database');
 const { t } = require('./translations');
 const kycBoxApi = require('./kycBoxApi');
+const pdfGenerator = require('./pdfGenerator');
+const path = require('path');
 
 async function processMessage(phone, text, buttonPayload, imagePayload) {
     const msgText = (text || '').trim().toLowerCase();
@@ -68,9 +70,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             const buttonText = t(lang, 'btn_select_date');
             
             // --- FALLBACK (Option A): Send List of Next 7 Days ---
-            // // Send the WhatsApp Flow for date selection (Commented out for now)
-            // await whatsappApi.sendFlowMessage(phone, bodyText, buttonText, 'YOUR_FLOW_ID', 'FLOW_TOKEN_123');
-
             const dateRows = [];
             for (let i = 1; i <= 7; i++) {
                 const date = new Date();
@@ -101,19 +100,16 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         
         try {
             if (buttonPayload) {
-                // If they clicked the List Menu fallback option
                 const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
                 if (dateRegex.test(buttonPayload)) {
                     selectedDate = buttonPayload;
                 }
             } else if (text && text.startsWith('{')) {
-                // text will be a stringified JSON if it came from the flow nfm_reply
                 const flowData = JSON.parse(text);
                 if (flowData && flowData.date) {
                     selectedDate = flowData.date;
                 }
             } else {
-                // If they typed it manually instead of using the flow/list
                 const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
                 const match = msgText.match(dateRegex);
                 if (match) {
@@ -156,24 +152,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         const num = parseInt(msgText, 10);
         if (!isNaN(num) && num > 0 && num <= 4) {
             stateManager.setTempData(phone, { numPeople: num, guests: [], currentGuestIndex: 1 });
-            stateManager.setState(phone, STATES.ASK_GUEST_NAME);
-            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_guest_name', 1));
+            stateManager.setState(phone, STATES.ASK_AADHAAR);
+            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_aadhaar', 1));
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_num_people'));
-        }
-        return;
-    }
-
-    if (state === STATES.ASK_GUEST_NAME) {
-        const nameRegex = /^[A-Za-z\s\.'\-]+$/;
-        if (msgText.length >= 2 && nameRegex.test(msgText)) {
-            const data = stateManager.getTempData(phone);
-            data.currentGuestEnteredName = text;
-            stateManager.setTempData(phone, data);
-            stateManager.setState(phone, STATES.ASK_AADHAAR);
-            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_aadhaar', text));
-        } else {
-            await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_name'));
         }
         return;
     }
@@ -208,12 +190,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const response = await kycBoxApi.submitOtp(data.kycRequestId, msgText);
                 
                 if (response.result && response.result.status === 'completed') {
-                    // Extract KYC data
                     const verifiedName = response.result.full_name;
                     const gender = response.result.gender;
                     const dob = response.result.dob;
                     
-                    // Format address safely
                     let addressStr = '';
                     if (response.result.address) {
                         const addr = response.result.address;
@@ -223,7 +203,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     const photoUrl = response.result.download_links ? response.result.download_links.photo : '';
 
                     data.guests.push({
-                        entered_name: data.currentGuestEnteredName,
                         kyc_verified_name: verifiedName,
                         aadhaar: data.aadhaar,
                         kyc_request_id: data.kycRequestId,
@@ -238,8 +217,8 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     if (data.currentGuestIndex < data.numPeople) {
                         data.currentGuestIndex++;
                         stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_GUEST_NAME);
-                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_guest_name', data.currentGuestIndex));
+                        stateManager.setState(phone, STATES.ASK_AADHAAR);
+                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_aadhaar', data.currentGuestIndex));
                     } else {
                         stateManager.setTempData(phone, data);
                         stateManager.setState(phone, STATES.ASK_PHOTO);
@@ -280,7 +259,12 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             if (isDuplicate) {
                  await whatsappApi.sendTextMessage(phone, t(lang, 'duplicate_booking'));
             } else {
+                 const randomId = Math.floor(1000 + Math.random() * 9000);
+                 const dateClean = (data.date || '').replace(/\D/g, '');
+                 const bookingRef = `MAHAKAL-${dateClean || '2026'}-${randomId}`;
+
                  await database.saveBooking({
+                    booking_ref: bookingRef,
                     user_phone: phone,
                     language: lang,
                     aarti_type: data.aarti,
@@ -290,7 +274,27 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     booking_date: data.date,
                     slot_time: data.slot
                 });
+
                 await whatsappApi.sendTextMessage(phone, t(lang, 'booking_success'));
+
+                // Generate and send PDF pass document over WhatsApp
+                try {
+                    const pdfPath = path.join(__dirname, 'public', 'tickets', `${bookingRef}.pdf`);
+                    await pdfGenerator.generateBookingPdf({
+                        booking_ref: bookingRef,
+                        user_phone: phone,
+                        aarti_type: data.aarti,
+                        booking_date: data.date,
+                        slot_time: data.slot,
+                        num_people: data.numPeople,
+                        guests: data.guests
+                    }, pdfPath);
+
+                    const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
+                    await whatsappApi.sendDocumentMessage(phone, mediaId, `${bookingRef}.pdf`, t(lang, 'pdf_caption'));
+                } catch (pdfErr) {
+                    console.error('Error generating or sending PDF pass:', pdfErr);
+                }
             }
             stateManager.clearUser(phone);
         } else if (buttonPayload === 'confirm_no' || msgText === 'no') {

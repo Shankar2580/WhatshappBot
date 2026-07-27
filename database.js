@@ -21,6 +21,7 @@ function initDb() {
         db.run(`
             CREATE TABLE IF NOT EXISTS bookings_v5 (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                booking_ref TEXT,
                 user_phone TEXT NOT NULL,
                 language TEXT NOT NULL,
                 aarti_type TEXT NOT NULL,
@@ -33,6 +34,10 @@ function initDb() {
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        // Safely alter existing table if booking_ref column is missing
+        db.run("ALTER TABLE bookings_v5 ADD COLUMN booking_ref TEXT", (err) => {
+            // Ignore error if column already exists
+        });
 
         // Create indexes for high-speed lookups
         db.run('CREATE INDEX IF NOT EXISTS idx_bookings_date_status ON bookings_v5 (booking_date, status);');
@@ -80,19 +85,19 @@ function getAvailableSlots(date) {
 function saveBooking(bookingData) {
     return new Promise((resolve, reject) => {
         const { 
-            user_phone, language, aarti_type, num_people, guests_data, 
+            booking_ref, user_phone, language, aarti_type, num_people, guests_data, 
             photo_id, booking_date, slot_time 
         } = bookingData;
         
         const stmt = db.prepare(`
             INSERT INTO bookings_v5 (
-                user_phone, language, aarti_type, num_people, guests_data,
+                booking_ref, user_phone, language, aarti_type, num_people, guests_data,
                 photo_id, booking_date, slot_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run([
-            user_phone, language, aarti_type, num_people, guests_data, 
+            booking_ref, user_phone, language, aarti_type, num_people, guests_data, 
             photo_id, booking_date, slot_time
         ], function(err) {
             if (err) reject(err);

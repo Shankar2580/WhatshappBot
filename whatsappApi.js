@@ -118,11 +118,59 @@ async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken) {
     }
 }
 
+async function uploadMedia(filePath, mimeType = 'application/pdf') {
+    try {
+        const FormData = require('form-data');
+        const fs = require('fs');
+
+        const formData = new FormData();
+        formData.append('messaging_product', 'whatsapp');
+        formData.append('file', fs.createReadStream(filePath), {
+            contentType: mimeType
+        });
+
+        const response = await axios.post(
+            `https://graph.facebook.com/v22.0/${PHONE_NUMBER_ID}/media`,
+            formData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
+                    ...formData.getHeaders()
+                }
+            }
+        );
+        return response.data.id;
+    } catch (error) {
+        console.error('Error uploading media to WhatsApp:', error?.response?.data || error.message);
+        throw error;
+    }
+}
+
+async function sendDocumentMessage(phone, mediaId, filename, caption) {
+    try {
+        await api.post(BASE_URL, {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'document',
+            document: {
+                id: mediaId,
+                filename: filename,
+                caption: caption
+            }
+        });
+    } catch (error) {
+        console.error('Error sending document message:', error?.response?.data || error.message);
+    }
+}
+
 module.exports = {
     sendTextMessage,
     sendSlotButtons,
     sendConfirmationButtons,
     sendInteractiveButtons,
     sendListMessage,
-    sendFlowMessage
+    sendFlowMessage,
+    uploadMedia,
+    sendDocumentMessage
 };
+
