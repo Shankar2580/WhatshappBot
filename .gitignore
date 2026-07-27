@@ -1,3 +1,9 @@
 node_modules/
 .env
-*.sqlite
+*.sqlite*
+public/tickets/*.pdf
+public/downloaded_photos/*
+!public/downloaded_photos/.gitkeep
+!public/tickets/.gitkeep
+public/gallery.html
+all_devotee_photos.*
