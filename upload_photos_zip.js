@@ -16,15 +16,23 @@ async function uploadZip() {
         execSync(`tar -czf "${archivePath}" -C "${path.join(__dirname, 'public')}" downloaded_photos`);
 
         console.log('🚀 Uploading archive to temporary download link...');
-        const link = execSync(`curl -s -F "file=@${archivePath}" https://0x0.st`).toString().trim();
+        const res = execSync(`curl -s -F "file=@${archivePath}" https://tmpfiles.org/api/v1/upload`).toString().trim();
 
-        if (link && link.startsWith('http')) {
-            console.log(`\n======================================================`);
-            console.log(`🎉 SUCCESS! Click the link below to download all photos:`);
-            console.log(`👉 ${link}`);
-            console.log(`======================================================\n`);
-        } else {
-            console.log('Upload result:', link);
+        try {
+            const parsed = JSON.parse(res);
+            if (parsed.status === 'success' && parsed.data && parsed.data.url) {
+                const rawUrl = parsed.data.url;
+                const directDlUrl = rawUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+
+                console.log(`\n======================================================`);
+                console.log(`🎉 SUCCESS! Click the link below to download all photos:`);
+                console.log(`👉 ${directDlUrl}`);
+                console.log(`======================================================\n`);
+            } else {
+                console.log('Upload response:', res);
+            }
+        } catch (e) {
+            console.log('Raw Upload Result:', res);
         }
 
         if (fs.existsSync(archivePath)) {
