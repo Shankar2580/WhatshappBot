@@ -137,8 +137,14 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     }
 
     if (state === STATES.CHOOSE_SLOT) {
-        if (buttonPayload && buttonPayload.startsWith('slot_')) {
-            const slotTime = buttonPayload.replace('slot_', '');
+        let slotTime = null;
+        if (buttonPayload) {
+            slotTime = buttonPayload.replace(/^slot_/, '');
+        } else if (text && (text.includes('AM') || text.includes('PM') || text.includes('-') || text.includes(':'))) {
+            slotTime = text.trim();
+        }
+
+        if (slotTime) {
             stateManager.setTempData(phone, { slot: slotTime });
             stateManager.setState(phone, STATES.ASK_NUM_PEOPLE);
             await whatsappApi.sendTextMessage(phone, t(lang, 'ask_num_people'));
