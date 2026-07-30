@@ -10,6 +10,11 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 app.use(bodyParser.json());
 app.use(express.static('public')); // Allow viewing downloaded photos in the browser
 
+// Health Check endpoint for Docker & EKS/Kubernetes probes
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
+});
+
 // Webhook Verification (GET)
 app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];

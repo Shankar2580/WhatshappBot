@@ -1,0 +1,30 @@
+# Dependencies & logs
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment & secrets
+.env
+.env.*
+
+# Version control & IDE
+.git
+.gitignore
+.vscode
+.idea
+
+# Database & local dynamic runtime files
+*.sqlite*
+public/tickets/*
+!public/tickets/.gitkeep
+public/downloaded_photos/*
+!public/downloaded_photos/.gitkeep
+public/gallery.html
+all_devotee_photos.*
+
+# Documentation & deployment manifests
+README.md
+CALENDAR_FLOW_GUIDE.md
+Dockerfile
+.dockerignore
+k8s/

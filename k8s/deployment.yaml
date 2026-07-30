@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: whatsapp-bot
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whatsapp-bot-config
+  namespace: whatsapp-bot
+data:
+  PORT: "3000"
+  NODE_ENV: "production"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: whatsapp-bot-secrets
+  namespace: whatsapp-bot
+type: Opaque
+stringData:
+  VERIFY_TOKEN: "YOUR_WEBHOOK_VERIFY_TOKEN"
+  WHATSAPP_TOKEN: "YOUR_META_WHATSAPP_ACCESS_TOKEN"
+  PHONE_NUMBER_ID: "YOUR_WHATSAPP_PHONE_NUMBER_ID"
+  KYCBOX_API_KEY: "YOUR_KYCBOX_API_KEY"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whatsapp-bot-deployment
+  namespace: whatsapp-bot
+  labels:
+    app: whatsapp-bot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: whatsapp-bot
+  template:
+    metadata:
+      labels:
+        app: whatsapp-bot
+    spec:
+      containers:
+      - name: whatsapp-bot
+        image: <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/whatsapp-booking-bot:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: whatsapp-bot-config
+        - secretRef:
+            name: whatsapp-bot-secrets
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: whatsapp-bot-service
+  namespace: whatsapp-bot
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: whatsapp-bot
