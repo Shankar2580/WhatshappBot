@@ -332,7 +332,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             stateManager.setState(phone, STATES.CONFIRM);
             
             const data = stateManager.getTempData(phone);
-            const namesStr = data.guests.map(g => g.kyc_verified_name).join(', ');
+            const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
             const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
             await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
         } else {

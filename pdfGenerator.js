@@ -168,7 +168,7 @@ async function generateBookingPdf(bookingData, outputPath) {
 
             doc.fillColor(darkText).fontSize(8.5).font('Helvetica');
             const instructions = [
-                '1. Mandatory Identification: All devotees must carry their ORIGINAL Aadhaar Card for physical verification at entry.',
+                '1. Mandatory Identification: All devotees must carry their ORIGINAL ID proof (Aadhaar Card or Passport) for physical verification at entry.',
                 '2. Reporting Time: Please arrive at Gate No. 4 (VIP / Pass Entrance) strictly 30 minutes before your allotted time slot.',
                 '3. Facial Verification: Facial verification will be conducted at the gate using the registered photo submitted during booking.',
                 '4. Dress Code: Traditional / Modest attire is required inside the temple complex. Cell phones & leather items are restricted in main sanctum.',
