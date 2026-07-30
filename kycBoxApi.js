@@ -57,7 +57,41 @@ async function submitOtp(requestId, otp) {
     }
 }
 
+/**
+ * Perform OCR verification on International Passport image
+ * @param {Buffer} imageBuffer Buffer of passport image
+ * @param {string} filename Optional file name
+ * @returns {Promise<Object>} API response with extracted passport details
+ */
+async function verifyPassportOcr(imageBuffer, filename = 'passport.jpg') {
+    try {
+        const FormData = require('form-data');
+        const formData = new FormData();
+        formData.append('file', imageBuffer, {
+            filename: filename,
+            contentType: 'image/jpeg'
+        });
+
+        const response = await axios.post(
+            'https://api.kycbox.ai/api/ocr/in/international-passport',
+            formData,
+            {
+                headers: {
+                    'Authorization': `Bearer ${process.env.KYCBOX_API_KEY}`,
+                    ...formData.getHeaders()
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error in KYCBox verifyPassportOcr:', error?.response?.data || error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     generateOtp,
-    submitOtp
+    submitOtp,
+    verifyPassportOcr
 };
+

@@ -163,6 +163,23 @@ async function sendDocumentMessage(phone, mediaId, filename, caption) {
     }
 }
 
+async function downloadMediaBuffer(mediaId) {
+    try {
+        const mediaRes = await axios.get(`https://graph.facebook.com/v22.0/${mediaId}`, {
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` }
+        });
+        const mediaUrl = mediaRes.data.url;
+        const fileRes = await axios.get(mediaUrl, {
+            headers: { 'Authorization': `Bearer ${WHATSAPP_TOKEN}` },
+            responseType: 'arraybuffer'
+        });
+        return Buffer.from(fileRes.data);
+    } catch (error) {
+        console.error('Error downloading media from WhatsApp:', error?.response?.data || error.message);
+        throw error;
+    }
+}
+
 module.exports = {
     sendTextMessage,
     sendSlotButtons,
@@ -171,6 +188,7 @@ module.exports = {
     sendListMessage,
     sendFlowMessage,
     uploadMedia,
-    sendDocumentMessage
+    sendDocumentMessage,
+    downloadMediaBuffer
 };
 

@@ -118,7 +118,7 @@ async function generateBookingPdf(bookingData, outputPath) {
             // Section 2: Devotee Roster Table
             // -------------------------------------------------------------
             y += 95;
-            doc.fillColor(saffronColor).fontSize(11).font('Helvetica-Bold').text('DEVOTEE ROSTER (AADHAAR VERIFIED)', 40, y);
+            doc.fillColor(saffronColor).fontSize(11).font('Helvetica-Bold').text('DEVOTEE ROSTER (VERIFIED IDENTITY)', 40, y);
 
             y += 18;
             // Table Header
@@ -126,7 +126,7 @@ async function generateBookingPdf(bookingData, outputPath) {
             doc.fillColor(saffronColor).fontSize(9).font('Helvetica-Bold');
             doc.text('#', 48, y + 6);
             doc.text('Devotee Name', 80, y + 6);
-            doc.text('Aadhaar Number', 260, y + 6);
+            doc.text('Verified Document / No.', 260, y + 6);
             doc.text('Gender', 390, y + 6);
             doc.text('DOB / YOB', 460, y + 6);
 
@@ -138,16 +138,20 @@ async function generateBookingPdf(bookingData, outputPath) {
                 const rowBg = index % 2 === 0 ? '#FFFFFF' : '#F5F5F5';
                 doc.rect(40, y, 515, 22).fillAndStroke(rowBg, '#EEEEEE');
 
-                // Mask Aadhaar (show last 4 digits)
-                const rawAadhaar = (g.aadhaar || '').replace(/\D/g, '');
-                const maskedAadhaar = rawAadhaar.length === 12 
-                    ? `XXXX-XXXX-${rawAadhaar.substring(8)}`
-                    : (g.aadhaar || 'N/A');
+                let docStr = 'N/A';
+                if (g.id_type === 'passport' || g.passport_number) {
+                    docStr = `Passport: ${g.passport_number || 'Verified'}`;
+                } else {
+                    const rawAadhaar = (g.aadhaar || '').replace(/\D/g, '');
+                    docStr = rawAadhaar.length === 12 
+                        ? `Aadhaar: XXXX-XXXX-${rawAadhaar.substring(8)}`
+                        : (g.aadhaar ? `Aadhaar: ${g.aadhaar}` : 'Aadhaar Verified');
+                }
 
                 doc.fillColor(darkText);
                 doc.text(`${index + 1}`, 48, y + 6);
                 doc.text(g.kyc_verified_name || g.entered_name || 'N/A', 80, y + 6, { width: 170, height: 14 });
-                doc.text(maskedAadhaar, 260, y + 6);
+                doc.text(docStr, 260, y + 6, { width: 125, height: 14 });
                 doc.text(g.gender || 'N/A', 390, y + 6);
                 doc.text(g.dob || 'N/A', 460, y + 6);
 
