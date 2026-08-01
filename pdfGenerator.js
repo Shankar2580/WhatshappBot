@@ -3,6 +3,20 @@ const fs = require('fs');
 const path = require('path');
 const QRCode = require('qrcode');
 
+function formatDob(dobStr) {
+    if (!dobStr || dobStr === 'N/A') return 'N/A';
+    // If already in DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY, normalize to DD-MM-YYYY
+    if (/^\d{2}[-\/.]\d{2}[-\/.]\d{4}$/.test(dobStr)) {
+        return dobStr.replace(/[\/.]/g, '-');
+    }
+    // If in YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD, format to DD-MM-YYYY
+    if (/^\d{4}[-\/.]\d{2}[-\/.]\d{2}$/.test(dobStr)) {
+        const parts = dobStr.split(/[-\/.]/);
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return dobStr;
+}
+
 /**
  * Generates an official booking PDF pass for Shri Mahakaleshwar Temple
  * @param {Object} bookingData 
@@ -153,7 +167,7 @@ async function generateBookingPdf(bookingData, outputPath) {
                 doc.text(g.kyc_verified_name || g.entered_name || 'N/A', 80, y + 6, { width: 170, height: 14 });
                 doc.text(docStr, 260, y + 6, { width: 125, height: 14 });
                 doc.text(g.gender || 'N/A', 390, y + 6);
-                doc.text(g.dob || 'N/A', 460, y + 6);
+                doc.text(formatDob(g.dob), 460, y + 6);
 
                 y += 22;
             });
@@ -162,7 +176,7 @@ async function generateBookingPdf(bookingData, outputPath) {
             // Section 3: Gate Entrance Instructions & Guidelines
             // -------------------------------------------------------------
             y += 20;
-            doc.rect(40, y, 515, 150).fillAndStroke('#FFFDE7', '#FFE082');
+            doc.rect(40, y, 515, 165).fillAndStroke('#FFFDE7', '#FFE082');
 
             doc.fillColor('#F57F17').fontSize(10).font('Helvetica-Bold').text('IMPORTANT INSTRUCTIONS FOR DEVOTEES', 50, y + 12);
 
@@ -176,10 +190,11 @@ async function generateBookingPdf(bookingData, outputPath) {
                 '6. Assistance: For help or queries, contact the Shri Mahakaleshwar Temple Helpdesk at Ujjain.'
             ];
 
-            let instY = y + 30;
+            let instY = y + 32;
             instructions.forEach(inst => {
                 doc.text(inst, 50, instY, { width: 495 });
-                instY += 18;
+                const height = doc.heightOfString(inst, { width: 495 });
+                instY += height + 10; // Adds 10pt (roughly 1 line) of spacing after each instruction
             });
 
             // -------------------------------------------------------------
