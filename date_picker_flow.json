@@ -1,0 +1,44 @@
+{
+  "version": "7.3",
+  "screens": [
+    {
+      "id": "date_selection_screen",
+      "title": "Select Date",
+      "terminal": true,
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "Image",
+            "src": "https://34.203.180.11/mahakal_booking_banner.png",
+            "scale-type": "cover"
+          },
+          {
+            "type": "TextHeading",
+            "text": "Select Booking Date"
+          },
+          {
+            "type": "TextBody",
+            "text": "Please choose a convenient date for your Darshan/Pooja booking."
+          },
+          {
+            "type": "DatePicker",
+            "name": "date",
+            "label": "Choose Date",
+            "required": true
+          },
+          {
+            "type": "Footer",
+            "label": "Confirm Date",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "date": "${form.date}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

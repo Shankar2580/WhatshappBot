@@ -11,6 +11,7 @@ metadata:
 data:
   PORT: "3000"
   NODE_ENV: "production"
+  WHATSAPP_FLOW_ID: "YOUR_WHATSAPP_FLOW_ID"
 ---
 apiVersion: v1
 kind: Secret

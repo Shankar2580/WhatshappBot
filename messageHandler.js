@@ -69,25 +69,30 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             const bodyText = t(lang, 'aarti_selected', buttonPayload);
             const buttonText = t(lang, 'btn_select_date');
             
-            // --- FALLBACK (Option A): Send List of Next 7 Days ---
-            const dateRows = [];
-            for (let i = 1; i <= 7; i++) {
-                const date = new Date();
-                date.setDate(date.getDate() + i);
-                const day = String(date.getDate()).padStart(2, '0');
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const year = date.getFullYear();
-                const rawDateStr = `${day}/${month}/${year}`;
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-                const dateStr = `${rawDateStr} (${dayName})`;
-                dateRows.push({ id: rawDateStr, title: dateStr });
-            }
+            // Use WhatsApp Flow if configured, otherwise fallback to interactive list message
+            if (process.env.WHATSAPP_FLOW_ID) {
+                await whatsappApi.sendFlowMessage(phone, bodyText, buttonText, process.env.WHATSAPP_FLOW_ID, 'FLOW_TOKEN_123');
+            } else {
+                // --- FALLBACK (Option A): Send List of Next 7 Days ---
+                const dateRows = [];
+                for (let i = 1; i <= 7; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() + i);
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const year = date.getFullYear();
+                    const rawDateStr = `${day}/${month}/${year}`;
+                    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                    const dateStr = `${rawDateStr} (${dayName})`;
+                    dateRows.push({ id: rawDateStr, title: dateStr });
+                }
 
-            const sections = [{
-                title: 'Available Dates',
-                rows: dateRows
-            }];
-            await whatsappApi.sendListMessage(phone, bodyText + '\n\nPlease select a date from the menu:', buttonText, sections);
+                const sections = [{
+                    title: 'Available Dates',
+                    rows: dateRows
+                }];
+                await whatsappApi.sendListMessage(phone, bodyText + '\n\nPlease select a date from the menu:', buttonText, sections);
+            }
 
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aarti_selection'));
@@ -118,6 +123,12 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             }
         } catch(e) {
             console.error('Error parsing date:', e);
+        }
+        
+        // Standardize YYYY-MM-DD format from WhatsApp Flow to DD/MM/YYYY
+        if (selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
+            const parts = selectedDate.split('-');
+            selectedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
         
         if (selectedDate) {
