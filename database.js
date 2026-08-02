@@ -120,10 +120,25 @@ function checkDuplicate(phone, date, slot) {
     });
 }
 
+function getLatestBookingByPhone(phone) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT * FROM bookings_v5
+            WHERE user_phone = ? AND status = 'confirmed'
+            ORDER BY id DESC LIMIT 1
+        `;
+        db.get(query, [phone], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
+
 initDb();
 
 module.exports = {
     getAvailableSlots,
     saveBooking,
-    checkDuplicate
+    checkDuplicate,
+    getLatestBookingByPhone
 };

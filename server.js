@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const messageHandler = require('./messageHandler');
+const database = require('./database');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -92,6 +94,47 @@ app.post('/webhook', async (req, res) => {
         console.error('Error processing webhook:', error);
     }
 });
+
+// API Endpoint to fetch devotee booking details by Face ID (person_id)
+app.get('/api/booking-by-face/:personId', async (req, res) => {
+    try {
+        const personId = req.params.personId;
+        if (!personId) {
+            return res.status(400).json({ error: 'Missing personId parameter' });
+        }
+        
+        // Extract phone number from personId (e.g. 919999999999_Aadhaar_Holder -> 919999999999)
+        const parts = personId.split('_');
+        const phone = parts[0];
+        
+        const booking = await database.getLatestBookingByPhone(phone);
+        if (!booking) {
+            return res.status(404).json({ error: 'No active booking found for this devotee' });
+        }
+        
+        let guests = [];
+        try {
+            guests = JSON.parse(booking.guests_data);
+        } catch (e) {
+            console.error('Error parsing guests data:', e);
+        }
+        
+        return res.status(200).json({
+            booking_ref: booking.booking_ref,
+            user_phone: booking.user_phone,
+            aarti_type: booking.aarti_type,
+            booking_date: booking.booking_date,
+            slot_time: booking.slot_time,
+            num_people: booking.num_people,
+            guests: guests,
+            status: booking.status
+        });
+    } catch (err) {
+        console.error('Error in /api/booking-by-face:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server is listening on port ${PORT}`);
