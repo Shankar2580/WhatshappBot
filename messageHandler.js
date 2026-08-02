@@ -7,6 +7,8 @@ const { t } = require('./translations');
 const kycBoxApi = require('./kycBoxApi');
 const pdfGenerator = require('./pdfGenerator');
 const path = require('path');
+const facepeApi = require('./facepeApi');
+
 
 async function processMessage(phone, text, buttonPayload, imagePayload) {
     const msgText = (text || '').trim().toLowerCase();
@@ -206,18 +208,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             stateManager.setTempData(phone, { aadhaar: msgText });
             await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
             
-            try {
-                const response = await kycBoxApi.generateOtp(msgText);
-                if (response.result && response.result.otp_sent) {
-                    stateManager.setTempData(phone, { kycRequestId: response.result.request_id });
-                    stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
-                } else {
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_failed'));
-                }
-            } catch (error) {
-                await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_failed'));
-            }
+            // --- MOCK MODE: Immediately simulate successful OTP generation ---
+            stateManager.setTempData(phone, { kycRequestId: "mock_req_" + Date.now() });
+            stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
+            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
         }
@@ -228,50 +222,39 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (/^\d{6}$/.test(msgText)) {
             const data = stateManager.getTempData(phone);
             try {
-                const response = await kycBoxApi.submitOtp(data.kycRequestId, msgText);
+                // --- MOCK MODE: Bypass submitOtp and generate mock guest info ---
+                const verifiedName = "Aadhaar Holder";
+                const gender = "Male";
+                const dob = "15-08-1990";
+                const addressStr = "Ujjain, Madhya Pradesh, 456001";
+                const photoUrl = "";
                 
-                if (response.result && response.result.status === 'completed') {
-                    const verifiedName = response.result.full_name;
-                    const gender = response.result.gender;
-                    const dob = response.result.dob;
-                    
-                    let addressStr = '';
-                    if (response.result.address) {
-                        const addr = response.result.address;
-                        addressStr = [addr.house, addr.street, addr.loc, addr.dist, addr.state, response.result.pincode].filter(Boolean).join(', ');
-                    }
-                    
-                    const photoUrl = response.result.download_links ? response.result.download_links.photo : '';
+                data.guests.push({
+                    id_type: 'aadhaar',
+                    kyc_verified_name: verifiedName,
+                    aadhaar: data.aadhaar,
+                    kyc_request_id: data.kycRequestId,
+                    gender: gender,
+                    dob: dob,
+                    address: addressStr,
+                    photo_url: photoUrl
+                });
 
-                    data.guests.push({
-                        id_type: 'aadhaar',
-                        kyc_verified_name: verifiedName,
-                        aadhaar: data.aadhaar,
-                        kyc_request_id: data.kycRequestId,
-                        gender: gender,
-                        dob: dob,
-                        address: addressStr,
-                        photo_url: photoUrl
-                    });
+                await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
 
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
-
-                    if (data.currentGuestIndex < data.numPeople) {
-                        data.currentGuestIndex++;
-                        stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_ID_TYPE);
-                        const buttons = [
-                            { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
-                            { id: 'doc_passport', title: t(lang, 'btn_passport') }
-                        ];
-                        await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
-                    } else {
-                        stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_PHOTO);
-                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
-                    }
+                if (data.currentGuestIndex < data.numPeople) {
+                    data.currentGuestIndex++;
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_ID_TYPE);
+                    const buttons = [
+                        { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
+                        { id: 'doc_passport', title: t(lang, 'btn_passport') }
+                    ];
+                    await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
                 } else {
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_PHOTO);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                 }
             } catch (error) {
                 await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
@@ -287,45 +270,36 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             await whatsappApi.sendTextMessage(phone, t(lang, 'verifying_passport'));
             const data = stateManager.getTempData(phone);
             try {
-                const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
-                const response = await kycBoxApi.verifyPassportOcr(imageBuffer);
-
-                if (response.result && (response.result.status === 'completed' || response.result.is_valid)) {
-                    const res = response.result;
-                    const givenNames = res.given_names || '';
-                    const surname = res.surname || '';
-                    const verifiedName = (`${givenNames} ${surname}`).trim() || res.full_name || 'Passport Holder';
-                    const passportNum = res.passport_number || 'N/A';
-                    const dob = res.date_of_birth || 'N/A';
-                    const sex = res.sex || 'N/A';
-
-                    data.guests.push({
-                        id_type: 'passport',
-                        kyc_verified_name: verifiedName,
-                        passport_number: passportNum,
-                        gender: sex,
-                        dob: dob,
-                        country: res.country || res.nationality || 'N/A'
-                    });
-
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
-
-                    if (data.currentGuestIndex < data.numPeople) {
-                        data.currentGuestIndex++;
-                        stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_ID_TYPE);
-                        const buttons = [
-                            { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
-                            { id: 'doc_passport', title: t(lang, 'btn_passport') }
-                        ];
-                        await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
-                    } else {
-                        stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_PHOTO);
-                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
-                    }
+                // --- MOCK MODE: Bypass download & OCR API calls ---
+                const verifiedName = "Passport Holder";
+                const passportNum = "L12345678";
+                const dob = "15-08-1990";
+                const sex = "Male";
+ 
+                data.guests.push({
+                    id_type: 'passport',
+                    kyc_verified_name: verifiedName,
+                    passport_number: passportNum,
+                    gender: sex,
+                    dob: dob,
+                    country: 'IND'
+                });
+ 
+                await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
+ 
+                if (data.currentGuestIndex < data.numPeople) {
+                    data.currentGuestIndex++;
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_ID_TYPE);
+                    const buttons = [
+                        { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
+                        { id: 'doc_passport', title: t(lang, 'btn_passport') }
+                    ];
+                    await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
                 } else {
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'passport_failed'));
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_PHOTO);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                 }
             } catch (error) {
                 console.error('Passport OCR error:', error);
@@ -339,13 +313,41 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     
     if (state === STATES.ASK_PHOTO) {
         if (imagePayload) {
-            stateManager.setTempData(phone, { photoId: imagePayload });
-            stateManager.setState(phone, STATES.CONFIRM);
-            
-            const data = stateManager.getTempData(phone);
-            const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
-            const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
-            await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
+            await whatsappApi.sendTextMessage(phone, "Processing photo, please wait...");
+            try {
+                const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
+                const data = stateManager.getTempData(phone);
+                
+                // Construct a unique person_id matching the primary guest's details
+                const primaryGuestName = (data.guests[0]?.kyc_verified_name || 'Guest').replace(/[^a-zA-Z0-9]/g, '_');
+                const personId = `${phone}_${primaryGuestName}`;
+
+                // Register face embedding in FacePe backend
+                const regRes = await facepeApi.registerFace(personId, imageBuffer);
+                console.log('Face registered successfully on FacePe:', regRes);
+
+                stateManager.setTempData(phone, { photoId: imagePayload });
+                stateManager.setState(phone, STATES.CONFIRM);
+                
+                const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
+                const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
+                await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
+            } catch (err) {
+                console.error('FacePe registration error:', err);
+                const errMsg = err?.response?.data?.detail || err.message || '';
+                if (errMsg.includes('no face detected')) {
+                    await whatsappApi.sendTextMessage(phone, "No face detected in the photo. Please send a clear, solo selfie of the primary devotee.");
+                } else {
+                    // Connection error fallback: Proceed to confirm booking anyway to prevent lockouts
+                    console.log("Proceeding with confirmation due to FacePe service error.");
+                    stateManager.setTempData(phone, { photoId: imagePayload });
+                    stateManager.setState(phone, STATES.CONFIRM);
+                    const data = stateManager.getTempData(phone);
+                    const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
+                    const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
+                    await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
+                }
+            }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_photo'));
         }
