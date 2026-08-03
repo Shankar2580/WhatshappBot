@@ -300,19 +300,37 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const ocrRes = await kycBoxApi.verifyPassportOcr(imageBuffer, 'passport.jpg');
                 console.log("KYCBox Passport OCR result:", JSON.stringify(ocrRes, null, 2));
 
-                const ocrData = ocrRes.data || ocrRes.result || ocrRes;
-                const verifiedName = ocrData.name || ocrData.full_name || ocrData.given_name || "Passport Holder";
-                const passportNum = ocrData.passport_number || ocrData.document_number || "Verified";
-                const dob = ocrData.dob || ocrData.date_of_birth || "15-08-1990";
-                const sex = ocrData.sex || ocrData.gender || "Male";
+                const ocrData = ocrRes.data?.data || ocrRes.data || ocrRes.result || ocrRes;
+                
+                // Extract string from string or object { value: "..." }
+                const val = (item) => (typeof item === 'object' && item !== null ? (item.value || item.text || item.val) : item);
+
+                const gName = val(ocrData.given_name) || val(ocrData.first_name);
+                const sName = val(ocrData.surname) || val(ocrData.last_name);
+                const fName = val(ocrData.name) || val(ocrData.full_name);
+
+                let verifiedName = 'Passport Holder';
+                if (gName || sName) {
+                    verifiedName = `${gName || ''} ${sName || ''}`.trim();
+                } else if (fName) {
+                    verifiedName = fName;
+                }
+
+                const passportNum = val(ocrData.passport_number) || val(ocrData.document_number) || "Verified";
+                const dob = val(ocrData.dob) || val(ocrData.date_of_birth) || "15-08-1990";
+                const sex = val(ocrData.sex) || val(ocrData.gender) || "Male";
  
+                if (!data.guests) {
+                    data.guests = [];
+                }
+
                 data.guests.push({
                     id_type: 'passport',
                     kyc_verified_name: verifiedName,
                     passport_number: passportNum,
                     gender: sex,
                     dob: dob,
-                    country: ocrData.country || 'IND'
+                    country: val(ocrData.country) || 'IND'
                 });
  
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
