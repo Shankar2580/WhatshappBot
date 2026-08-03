@@ -207,11 +207,16 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (/^\d{12}$/.test(msgText)) {
             stateManager.setTempData(phone, { aadhaar: msgText });
             await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
-            
-            // --- MOCK MODE: Immediately simulate successful OTP generation ---
-            stateManager.setTempData(phone, { kycRequestId: "mock_req_" + Date.now() });
-            stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
-            await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
+            try {
+                const res = await kycBoxApi.generateOtp(msgText);
+                const requestId = res.request_id || res.id || res.data?.request_id;
+                stateManager.setTempData(phone, { kycRequestId: requestId });
+                stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
+                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
+            } catch (err) {
+                console.error("KYCBox generateOtp error:", err?.response?.data || err.message);
+                await whatsappApi.sendTextMessage(phone, "Failed to generate OTP via Aadhaar API. Please check the Aadhaar number and try again.");
+            }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
         }
@@ -222,12 +227,15 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (/^\d{6}$/.test(msgText)) {
             const data = stateManager.getTempData(phone);
             try {
-                // --- MOCK MODE: Bypass submitOtp and generate mock guest info ---
-                const verifiedName = "Aadhaar Holder";
-                const gender = "Male";
-                const dob = "15-08-1990";
-                const addressStr = "Ujjain, Madhya Pradesh, 456001";
-                const photoUrl = "";
+                const kycRes = await kycBoxApi.submitOtp(data.kycRequestId, msgText);
+                console.log("KYCBox submitOtp result:", JSON.stringify(kycRes, null, 2));
+
+                const kycData = kycRes.data || kycRes.result || kycRes;
+                const verifiedName = kycData.full_name || kycData.name || kycData.verified_name || "Aadhaar Holder";
+                const gender = kycData.gender || "Male";
+                const dob = kycData.dob || kycData.date_of_birth || "15-08-1990";
+                const addressStr = typeof kycData.address === 'object' ? JSON.stringify(kycData.address) : (kycData.address || "Verified Address");
+                const photoUrl = kycData.photo_link || kycData.profile_image || "";
                 
                 data.guests.push({
                     id_type: 'aadhaar',
@@ -257,6 +265,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                 }
             } catch (error) {
+                console.error("KYCBox submitOtp error:", error?.response?.data || error.message);
                 await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
             }
         } else {
@@ -270,11 +279,15 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             await whatsappApi.sendTextMessage(phone, t(lang, 'verifying_passport'));
             const data = stateManager.getTempData(phone);
             try {
-                // --- MOCK MODE: Bypass download & OCR API calls ---
-                const verifiedName = "Passport Holder";
-                const passportNum = "L12345678";
-                const dob = "15-08-1990";
-                const sex = "Male";
+                const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
+                const ocrRes = await kycBoxApi.verifyPassportOcr(imageBuffer, 'passport.jpg');
+                console.log("KYCBox Passport OCR result:", JSON.stringify(ocrRes, null, 2));
+
+                const ocrData = ocrRes.data || ocrRes.result || ocrRes;
+                const verifiedName = ocrData.name || ocrData.full_name || ocrData.given_name || "Passport Holder";
+                const passportNum = ocrData.passport_number || ocrData.document_number || "Verified";
+                const dob = ocrData.dob || ocrData.date_of_birth || "15-08-1990";
+                const sex = ocrData.sex || ocrData.gender || "Male";
  
                 data.guests.push({
                     id_type: 'passport',
@@ -282,7 +295,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     passport_number: passportNum,
                     gender: sex,
                     dob: dob,
-                    country: 'IND'
+                    country: ocrData.country || 'IND'
                 });
  
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
@@ -302,7 +315,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                 }
             } catch (error) {
-                console.error('Passport OCR error:', error);
+                console.error('Passport OCR error:', error?.response?.data || error.message);
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_failed'));
             }
         } else {
