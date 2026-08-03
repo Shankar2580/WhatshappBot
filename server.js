@@ -119,8 +119,19 @@ app.get('/api/booking-by-face/:personId', async (req, res) => {
             console.error('Error parsing guests data:', e);
         }
         
-        // Trigger Waveshare Hardware Gate Relay (CH1 / Coil 0 for 500ms)
-        const relayResult = await relayController.triggerGateRelay(0, 500);
+        // Try direct relay trigger if EC2 is on local network, fallback safely if cloud-hosted
+        let gateUnlocked = false;
+        let gateMessage = 'Local mobile bridge trigger active';
+        try {
+            const relayResult = await Promise.race([
+                relayController.triggerGateRelay(0, 500),
+                new Promise((_, r) => setTimeout(() => r(new Error('EC2 Relay timeout')), 1000))
+            ]);
+            gateUnlocked = relayResult.success;
+            gateMessage = relayResult.message;
+        } catch (rErr) {
+            // Safe fallback: local mobile app handles relay triggering on local Wi-Fi
+        }
         
         return res.status(200).json({
             booking_ref: booking.booking_ref,
@@ -131,8 +142,8 @@ app.get('/api/booking-by-face/:personId', async (req, res) => {
             num_people: booking.num_people,
             guests: guests,
             status: booking.status,
-            gate_unlocked: relayResult.success,
-            gate_message: relayResult.message
+            gate_unlocked: gateUnlocked,
+            gate_message: gateMessage
         });
     } catch (err) {
         console.error('Error in /api/booking-by-face:', err);
