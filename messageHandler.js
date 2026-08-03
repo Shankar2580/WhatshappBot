@@ -209,13 +209,18 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
             try {
                 const res = await kycBoxApi.generateOtp(msgText);
-                const requestId = res.request_id || res.id || res.data?.request_id;
+                console.log("KYCBox generateOtp response:", JSON.stringify(res, null, 2));
+                const requestId = res.request_id || res.data?.request_id || res.result?.request_id || res.id;
+                if (!requestId) {
+                    throw new Error("No request_id returned from KYCBox OTP generator");
+                }
                 stateManager.setTempData(phone, { kycRequestId: requestId });
                 stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
                 await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
             } catch (err) {
                 console.error("KYCBox generateOtp error:", err?.response?.data || err.message);
-                await whatsappApi.sendTextMessage(phone, "Failed to generate OTP via Aadhaar API. Please check the Aadhaar number and try again.");
+                const detail = err?.response?.data?.message || err?.response?.data?.detail || err.message || '';
+                await whatsappApi.sendTextMessage(phone, `Failed to generate OTP via Aadhaar API: ${detail}. Please check the Aadhaar number and try again.`);
             }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
@@ -227,6 +232,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (/^\d{6}$/.test(msgText)) {
             const data = stateManager.getTempData(phone);
             try {
+                if (!data.kycRequestId) {
+                    throw new Error("OTP Session expired or missing request ID. Please type 'cancel' and try again.");
+                }
+
                 const kycRes = await kycBoxApi.submitOtp(data.kycRequestId, msgText);
                 console.log("KYCBox submitOtp result:", JSON.stringify(kycRes, null, 2));
 
@@ -237,6 +246,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const addressStr = typeof kycData.address === 'object' ? JSON.stringify(kycData.address) : (kycData.address || "Verified Address");
                 const photoUrl = kycData.photo_link || kycData.profile_image || "";
                 
+                if (!data.guests) {
+                    data.guests = [];
+                }
+
                 data.guests.push({
                     id_type: 'aadhaar',
                     kyc_verified_name: verifiedName,
@@ -250,8 +263,11 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
                 await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
 
-                if (data.currentGuestIndex < data.numPeople) {
-                    data.currentGuestIndex++;
+                const currentIdx = data.currentGuestIndex || 1;
+                const numPeople = data.numPeople || 1;
+
+                if (currentIdx < numPeople) {
+                    data.currentGuestIndex = currentIdx + 1;
                     stateManager.setTempData(phone, data);
                     stateManager.setState(phone, STATES.ASK_ID_TYPE);
                     const buttons = [
@@ -266,7 +282,8 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 }
             } catch (error) {
                 console.error("KYCBox submitOtp error:", error?.response?.data || error.message);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
+                const errDetail = error?.response?.data?.message || error?.response?.data?.detail || error.message || '';
+                await whatsappApi.sendTextMessage(phone, `Aadhaar OTP verification failed (${errDetail}). Please check the 6-digit OTP or try again.`);
             }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
