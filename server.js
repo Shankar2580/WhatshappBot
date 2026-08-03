@@ -95,7 +95,7 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-// API Endpoint to fetch devotee booking details by Face ID (person_id)
+// API Endpoint to fetch devotee booking details by Face ID (person_id) & open turnstile gate
 app.get('/api/booking-by-face/:personId', async (req, res) => {
     try {
         const personId = req.params.personId;
@@ -119,6 +119,9 @@ app.get('/api/booking-by-face/:personId', async (req, res) => {
             console.error('Error parsing guests data:', e);
         }
         
+        // Trigger Waveshare Hardware Gate Relay (CH1 / Coil 0 for 500ms)
+        const relayResult = await relayController.triggerGateRelay(0, 500);
+        
         return res.status(200).json({
             booking_ref: booking.booking_ref,
             user_phone: booking.user_phone,
@@ -127,7 +130,9 @@ app.get('/api/booking-by-face/:personId', async (req, res) => {
             slot_time: booking.slot_time,
             num_people: booking.num_people,
             guests: guests,
-            status: booking.status
+            status: booking.status,
+            gate_unlocked: relayResult.success,
+            gate_message: relayResult.message
         });
     } catch (err) {
         console.error('Error in /api/booking-by-face:', err);

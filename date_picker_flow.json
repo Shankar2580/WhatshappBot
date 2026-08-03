@@ -9,11 +9,6 @@
         "type": "SingleColumnLayout",
         "children": [
           {
-            "type": "Image",
-            "src": "https://chat.facepe.ai/mahakal_booking_banner.png",
-            "scale-type": "cover"
-          },
-          {
             "type": "TextHeading",
             "text": "Select Booking Date"
           },
