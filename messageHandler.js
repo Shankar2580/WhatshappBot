@@ -305,7 +305,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 // Extract string from string or object { value: "..." }
                 const val = (item) => (typeof item === 'object' && item !== null ? (item.value || item.text || item.val) : item);
 
-                const gName = val(ocrData.given_name) || val(ocrData.first_name);
+                const gName = val(ocrData.given_names) || val(ocrData.given_name) || val(ocrData.first_name);
                 const sName = val(ocrData.surname) || val(ocrData.last_name);
                 const fName = val(ocrData.name) || val(ocrData.full_name);
 
