@@ -1,0 +1,49 @@
+name: FacePe Whatsapp Bot CI
+
+env:
+  AWS_REGION: "us-east-1"
+  DEV_AWS_ROLE: ${{ secrets.DEV_AWS_ROLE }}
+  CICD_AGENT_TOKEN: ${{ secrets.CICD_AGENT_TOKEN}}
+  PROJECT_NAME: "facepe-whatsapp-bot"
+  BRANCH_NAME: $(basename $GITHUB_REF)
+
+permissions:
+  id-token: write
+  contents: read
+  security-events: write
+  actions: read
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-containers:
+    runs-on: ubuntu-latest
+    name: Checkout code, build and push Docker image to ECR 
+    outputs:
+      image-tag: ${{ steps.image-tag.outputs.image-tag }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build and push Docker image to ECR
+        id: image-tag
+        uses: facepe09/infrastructure/.github/actions/build-and-push@main
+        with:
+          role-to-assume: ${{ env.DEV_AWS_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+          repo-name: ${{ env.PROJECT_NAME }}
+          image-tag: ${{ env.IMAGE_TAG }}
+
+  push-image-to-infra-repo:
+    runs-on: ubuntu-latest
+    name: Push image to infra deployment repo
+    needs: build-containers
+    steps:
+      - name: Push image to infra deployment repo
+        uses: facepe09/infrastructure/.github/actions/push-image-to-infra-repo-helm@main
+        with:
+          repo-name: ${{ env.PROJECT_NAME }}
+          image-tag: ${{ needs.build-containers.outputs.image-tag }}
+          token: ${{ env.CICD_AGENT_TOKEN }}
+

@@ -25,7 +25,7 @@ FROM node:20-alpine AS runner
 
 # Set production environment
 ENV NODE_ENV=production \
-    PORT=3000
+    PORT=8009
 
 WORKDIR /app
 
@@ -46,11 +46,11 @@ RUN mkdir -p /app/public/tickets /app/public/downloaded_photos && \
 USER node
 
 # Expose HTTP port
-EXPOSE 3000
+EXPOSE 8009
 
 # Docker Healthcheck targeting the /health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
+  CMD curl -f http://localhost:8009/wb/health || exit 1
 
 # Start server
 CMD ["node", "server.js"]

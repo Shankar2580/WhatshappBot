@@ -6,14 +6,14 @@ const database = require('./database');
 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8009;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 
 app.use(bodyParser.json());
 app.use(express.static('public')); // Allow viewing downloaded photos in the browser
 
 // Health Check endpoint for Docker & EKS/Kubernetes probes
-app.get('/health', (req, res) => {
+app.get('/wb/health', (req, res) => {
     res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 
