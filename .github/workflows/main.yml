@@ -4,7 +4,7 @@ env:
   AWS_REGION: "us-east-1"
   DEV_AWS_ROLE: ${{ secrets.DEV_AWS_ROLE }}
   CICD_AGENT_TOKEN: ${{ secrets.CICD_AGENT_TOKEN}}
-  PROJECT_NAME: "facepe-whatsapp-bot"
+  PROJECT_NAME: "Facepe-Whatshap-Bot"
   BRANCH_NAME: $(basename $GITHUB_REF)
 
 permissions:
