@@ -21,7 +21,7 @@ on:
 jobs:
   build-containers:
     runs-on: ubuntu-latest
-    name: Checkout code, build and push Docker image to ECR 
+    name: Checkout code, build and push Docker image to ECR .
     outputs:
       image-tag: ${{ steps.image-tag.outputs.image-tag }}
     steps:
