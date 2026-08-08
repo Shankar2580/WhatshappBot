@@ -4,6 +4,11 @@ const bodyParser = require('body-parser');
 const messageHandler = require('./messageHandler');
 const database = require('./database');
 const relayController = require('./relayController');
+const crypto = require('crypto');
+const path = require('path');
+const pdfGenerator = require('./pdfGenerator');
+const whatsappApi = require('./whatsappApi');
+const { t } = require('./translations');
 
 
 const app = express();
@@ -93,6 +98,93 @@ app.post('/webhook', async (req, res) => {
         }
     } catch (error) {
         console.error('Error processing webhook:', error);
+    }
+});
+
+// Razorpay Webhook Endpoint
+app.post('/webhook/razorpay', async (req, res) => {
+    // 1. Immediately acknowledge the receipt with 200 OK
+    res.sendStatus(200);
+
+    const signature = req.headers['x-razorpay-signature'];
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+    // Validate Signature
+    if (secret) {
+        try {
+            const shasum = crypto.createHmac('sha256', secret);
+            shasum.update(JSON.stringify(req.body));
+            const digest = shasum.digest('hex');
+            
+            if (digest !== signature) {
+                console.warn('[Razorpay Webhook] Invalid signature. Ignoring webhook.');
+                return;
+            }
+        } catch (err) {
+            console.error('[Razorpay Webhook] Signature verification failed:', err.message);
+            return;
+        }
+    } else {
+        console.warn('[Razorpay Webhook] RAZORPAY_WEBHOOK_SECRET is not configured. Proceeding without signature verification (Sandbox mode).');
+    }
+
+    try {
+        const body = req.body;
+        console.log('[Razorpay Webhook] Event received:', body.event);
+
+        if (body.event === 'payment.captured' || body.event === 'order.paid') {
+            const paymentEntity = body.payload.payment.entity;
+            const bookingRef = paymentEntity.notes.booking_ref || paymentEntity.reference_id;
+            const phone = paymentEntity.notes.user_phone || paymentEntity.contact;
+            
+            if (!bookingRef) {
+                console.warn('[Razorpay Webhook] Webhook ignored: no booking_ref found in notes.');
+                return;
+            }
+
+            // Retrieve booking
+            const booking = await database.getBookingByRef(bookingRef);
+            if (!booking) {
+                console.warn(`[Razorpay Webhook] Booking not found for ref: ${bookingRef}`);
+                return;
+            }
+
+            if (booking.status === 'pending_payment') {
+                console.log(`[Razorpay Webhook] Payment captured for ref ${bookingRef}. Confirming booking.`);
+                
+                // Update booking status
+                await database.updateBookingStatus(bookingRef, 'confirmed');
+
+                // Send confirmation message
+                const lang = booking.language || 'en';
+                await whatsappApi.sendTextMessage(phone, t(lang, 'booking_success'));
+
+                // Generate and send PDF pass document over WhatsApp
+                try {
+                    const pdfPath = path.join(__dirname, 'public', 'tickets', `${bookingRef}.pdf`);
+                    const guests = JSON.parse(booking.guests_data);
+                    
+                    await pdfGenerator.generateBookingPdf({
+                        booking_ref: bookingRef,
+                        user_phone: booking.user_phone,
+                        aarti_type: booking.aarti_type,
+                        booking_date: booking.booking_date,
+                        slot_time: booking.slot_time,
+                        num_people: booking.num_people,
+                        guests: guests
+                    }, pdfPath);
+
+                    const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
+                    await whatsappApi.sendDocumentMessage(phone, mediaId, `${bookingRef}.pdf`, t(lang, 'pdf_caption'));
+                } catch (pdfErr) {
+                    console.error('[Razorpay Webhook] Error generating or sending PDF pass:', pdfErr);
+                }
+            } else {
+                console.log(`[Razorpay Webhook] Booking ${bookingRef} already processed (status: ${booking.status})`);
+            }
+        }
+    } catch (error) {
+        console.error('[Razorpay Webhook] Error processing event:', error);
     }
 });
 

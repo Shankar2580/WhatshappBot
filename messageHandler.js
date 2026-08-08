@@ -8,6 +8,7 @@ const kycBoxApi = require('./kycBoxApi');
 const pdfGenerator = require('./pdfGenerator');
 const path = require('path');
 const facepeApi = require('./facepeApi');
+const razorpayApi = require('./razorpayApi');
 
 
 async function processMessage(phone, text, buttonPayload, imagePayload) {
@@ -460,45 +461,60 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             const isDuplicate = await database.checkDuplicate(phone, data.date, data.slot);
             if (isDuplicate) {
                  await whatsappApi.sendTextMessage(phone, t(lang, 'duplicate_booking'));
+                 stateManager.clearUser(phone);
             } else {
                  const randomId = Math.floor(1000 + Math.random() * 9000);
                  const dateClean = (data.date || '').replace(/\D/g, '');
                  const bookingRef = `MAHAKAL-${dateClean || '2026'}-${randomId}`;
 
+                 // Define price based on Aarti type
+                 const aartiPrices = {
+                     'Bhasma Aarti': 100,
+                     'Shighra Darshan': 250,
+                     'Shayan Aarti': 50,
+                     'Sandhya Aarti': 50
+                 };
+                 const unitPrice = aartiPrices[data.aarti] || 50;
+                 const totalPrice = unitPrice * data.numPeople;
+
+                 // Save booking as 'pending_payment'
                  await database.saveBooking({
-                    booking_ref: bookingRef,
-                    user_phone: phone,
-                    language: lang,
-                    aarti_type: data.aarti,
-                    num_people: data.numPeople,
-                    guests_data: JSON.stringify(data.guests),
-                    photo_id: data.photoId,
-                    booking_date: data.date,
-                    slot_time: data.slot
-                });
+                     booking_ref: bookingRef,
+                     user_phone: phone,
+                     language: lang,
+                     aarti_type: data.aarti,
+                     num_people: data.numPeople,
+                     guests_data: JSON.stringify(data.guests),
+                     photo_id: data.photoId,
+                     booking_date: data.date,
+                     slot_time: data.slot,
+                     status: 'pending_payment'
+                 });
 
-                await whatsappApi.sendTextMessage(phone, t(lang, 'booking_success'));
+                 // Create Razorpay payment link
+                 try {
+                     const primaryGuestName = data.guests[0]?.kyc_verified_name || 'Devotee';
+                     const amountPaise = totalPrice * 100; // in paise
+                     const paymentLink = await razorpayApi.createPaymentLink(
+                         bookingRef,
+                         amountPaise,
+                         phone,
+                         data.aarti,
+                         primaryGuestName
+                     );
 
-                // Generate and send PDF pass document over WhatsApp
-                try {
-                    const pdfPath = path.join(__dirname, 'public', 'tickets', `${bookingRef}.pdf`);
-                    await pdfGenerator.generateBookingPdf({
-                        booking_ref: bookingRef,
-                        user_phone: phone,
-                        aarti_type: data.aarti,
-                        booking_date: data.date,
-                        slot_time: data.slot,
-                        num_people: data.numPeople,
-                        guests: data.guests
-                    }, pdfPath);
+                     // Send payment link to user
+                     await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, paymentLink));
+                 } catch (payErr) {
+                     console.error('[Razorpay] Failed to generate payment link, fallback to mock link:', payErr);
+                     // Fallback mock link for testing/resilience
+                     const mockLink = `https://checkout.razorpay.com/v1/checkout.html?mock_booking_ref=${bookingRef}&mock_amount=${totalPrice}`;
+                     await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, mockLink));
+                 }
 
-                    const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
-                    await whatsappApi.sendDocumentMessage(phone, mediaId, `${bookingRef}.pdf`, t(lang, 'pdf_caption'));
-                } catch (pdfErr) {
-                    console.error('Error generating or sending PDF pass:', pdfErr);
-                }
+                 // Clear user state immediately (the webhook will handle ticket delivery upon payment)
+                 stateManager.clearUser(phone);
             }
-            stateManager.clearUser(phone);
         } else if (buttonPayload === 'confirm_no' || msgText === 'no') {
             stateManager.clearUser(phone);
             await whatsappApi.sendTextMessage(phone, t(lang, 'booking_cancelled'));

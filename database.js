@@ -86,19 +86,21 @@ function saveBooking(bookingData) {
     return new Promise((resolve, reject) => {
         const { 
             booking_ref, user_phone, language, aarti_type, num_people, guests_data, 
-            photo_id, booking_date, slot_time 
+            photo_id, booking_date, slot_time, status 
         } = bookingData;
+        
+        const bookingStatus = status || 'confirmed';
         
         const stmt = db.prepare(`
             INSERT INTO bookings_v5 (
                 booking_ref, user_phone, language, aarti_type, num_people, guests_data,
-                photo_id, booking_date, slot_time
+                photo_id, booking_date, slot_time, status
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
         stmt.run([
             booking_ref, user_phone, language, aarti_type, num_people, guests_data, 
-            photo_id, booking_date, slot_time
+            photo_id, booking_date, slot_time, bookingStatus
         ], function(err) {
             if (err) reject(err);
             else resolve(this.lastID);
@@ -134,11 +136,40 @@ function getLatestBookingByPhone(phone) {
     });
 }
 
+function updateBookingStatus(bookingRef, status) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            UPDATE bookings_v5
+            SET status = ?
+            WHERE booking_ref = ?
+        `;
+        db.run(query, [status, bookingRef], function(err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+}
+
+function getBookingByRef(bookingRef) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT * FROM bookings_v5
+            WHERE booking_ref = ? LIMIT 1
+        `;
+        db.get(query, [bookingRef], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+}
+
 initDb();
 
 module.exports = {
     getAvailableSlots,
     saveBooking,
     checkDuplicate,
-    getLatestBookingByPhone
+    getLatestBookingByPhone,
+    updateBookingStatus,
+    getBookingByRef
 };
