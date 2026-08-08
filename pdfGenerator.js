@@ -129,9 +129,33 @@ async function generateBookingPdf(bookingData, outputPath) {
             doc.font('Helvetica').text(bookingData.user_phone || 'N/A', 410, y + 48);
 
             // -------------------------------------------------------------
+            // Section 1.5: Payment Details Card
+            // -------------------------------------------------------------
+            y = 250;
+            doc.rect(40, y, 515, 55).fillAndStroke('#FAFAFA', borderBg);
+
+            doc.fillColor(saffronColor).fontSize(11).font('Helvetica-Bold').text('PAYMENT DETAILS', 50, y + 10);
+
+            doc.fillColor(darkText).fontSize(9).font('Helvetica-Bold');
+            
+            // Left Column
+            doc.text('Payment Status:', 50, y + 28);
+            doc.font('Helvetica-Bold').fillColor(greenSuccess).text('PAID (CONFIRMED)', 140, y + 28);
+
+            doc.font('Helvetica-Bold').fillColor(darkText).text('Transaction ID:', 50, y + 42);
+            doc.font('Helvetica').text(bookingData.payment_id || 'N/A', 140, y + 42);
+
+            // Right Column
+            doc.font('Helvetica-Bold').text('Amount Paid:', 320, y + 28);
+            doc.font('Helvetica').text(`₹ ${bookingData.amount_paid || 'N/A'}`, 410, y + 28);
+
+            doc.font('Helvetica-Bold').text('Payment Gateway:', 320, y + 42);
+            doc.font('Helvetica').text('Razorpay API', 410, y + 42);
+
+            // -------------------------------------------------------------
             // Section 2: Devotee Roster Table
             // -------------------------------------------------------------
-            y += 95;
+            y = 320;
             doc.fillColor(saffronColor).fontSize(11).font('Helvetica-Bold').text('DEVOTEE ROSTER (VERIFIED IDENTITY)', 40, y);
 
             y += 18;

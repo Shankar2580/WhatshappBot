@@ -38,6 +38,12 @@ function initDb() {
         db.run("ALTER TABLE bookings_v5 ADD COLUMN booking_ref TEXT", (err) => {
             // Ignore error if column already exists
         });
+        db.run("ALTER TABLE bookings_v5 ADD COLUMN payment_id TEXT", (err) => {
+            // Ignore error if column already exists
+        });
+        db.run("ALTER TABLE bookings_v5 ADD COLUMN amount_paid INTEGER", (err) => {
+            // Ignore error if column already exists
+        });
 
         // Create indexes for high-speed lookups
         db.run('CREATE INDEX IF NOT EXISTS idx_bookings_date_status ON bookings_v5 (booking_date, status);');
@@ -163,6 +169,20 @@ function getBookingByRef(bookingRef) {
     });
 }
 
+function confirmBookingPayment(bookingRef, paymentId, amountPaid) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            UPDATE bookings_v5
+            SET status = 'confirmed', payment_id = ?, amount_paid = ?
+            WHERE booking_ref = ?
+        `;
+        db.run(query, [paymentId, amountPaid, bookingRef], function(err) {
+            if (err) reject(err);
+            else resolve(this.changes > 0);
+        });
+    });
+}
+
 initDb();
 
 module.exports = {
@@ -171,5 +191,6 @@ module.exports = {
     checkDuplicate,
     getLatestBookingByPhone,
     updateBookingStatus,
-    getBookingByRef
+    getBookingByRef,
+    confirmBookingPayment
 };

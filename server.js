@@ -152,8 +152,11 @@ app.post('/webhook/razorpay', async (req, res) => {
             if (booking.status === 'pending_payment') {
                 console.log(`[Razorpay Webhook] Payment captured for ref ${bookingRef}. Confirming booking.`);
                 
-                // Update booking status
-                await database.updateBookingStatus(bookingRef, 'confirmed');
+                const paymentId = paymentEntity.id || 'MOCK_PAYMENT_ID';
+                const amountPaid = paymentEntity.amount ? (paymentEntity.amount / 100) : 0;
+
+                // Update booking status and save payment details in the database
+                await database.confirmBookingPayment(bookingRef, paymentId, amountPaid);
 
                 // Send confirmation message
                 const lang = booking.language || 'en';
@@ -171,7 +174,9 @@ app.post('/webhook/razorpay', async (req, res) => {
                         booking_date: booking.booking_date,
                         slot_time: booking.slot_time,
                         num_people: booking.num_people,
-                        guests: guests
+                        guests: guests,
+                        payment_id: paymentId,
+                        amount_paid: amountPaid
                     }, pdfPath);
 
                     const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
