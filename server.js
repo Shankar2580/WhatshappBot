@@ -3,6 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const messageHandler = require('./messageHandler');
 const database = require('./database');
+const relayController = require('./relayController');
 
 
 const app = express();
