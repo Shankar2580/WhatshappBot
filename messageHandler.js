@@ -86,9 +86,9 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             if (process.env.WHATSAPP_FLOW_ID) {
                 await whatsappApi.sendFlowMessage(phone, bodyText, buttonText, process.env.WHATSAPP_FLOW_ID, 'FLOW_TOKEN_123');
             } else {
-                // --- FALLBACK (Option A): Send List of Next 7 Days ---
+                // --- FALLBACK (Option A): Send List of Next 10 Days ---
                 const dateRows = [];
-                for (let i = 1; i <= 7; i++) {
+                for (let i = 1; i <= 10; i++) {
                     const date = new Date();
                     date.setDate(date.getDate() + i);
                     const day = String(date.getDate()).padStart(2, '0');
@@ -145,6 +145,38 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         }
         
         if (selectedDate) {
+            // Validate that the date is within the next 30 days
+            try {
+                const parts = selectedDate.split('/');
+                const day = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10) - 1;
+                const year = parseInt(parts[2], 10);
+                const targetDate = new Date(year, month, day);
+                
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                const diffTime = targetDate - today;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                if (diffDays < 1 || diffDays > 30) {
+                    const minDate = new Date();
+                    minDate.setDate(minDate.getDate() + 1);
+                    const maxDate = new Date();
+                    maxDate.setDate(maxDate.getDate() + 30);
+                    
+                    const minStr = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
+                    const maxStr = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
+                    
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_date_range', minStr, maxStr));
+                    return;
+                }
+            } catch (err) {
+                console.error('Date range validation error:', err);
+                await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_date'));
+                return;
+            }
+
             stateManager.setTempData(phone, { date: selectedDate });
             
             const data = stateManager.getTempData(phone);
