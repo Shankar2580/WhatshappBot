@@ -9,6 +9,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Upgrade npm globally to ensure package install updates vulnerable bundled dependencies
+RUN npm install -g npm@latest
+
 # Install native compilation build dependencies required for native modules (e.g., sqlite3)
 RUN apk add --no-cache python3 make g++ gcc
 
@@ -22,6 +25,9 @@ RUN npm ci --only=production
 # Stage 2: Production Runtime
 # ----------------------------------------------------
 FROM node:20-alpine AS runner
+
+# Upgrade npm globally to fix vulnerability scan failures in base image bundled tools (tar, sigstore, etc.)
+RUN npm install -g npm@latest
 
 # Set production environment
 ENV NODE_ENV=production \
