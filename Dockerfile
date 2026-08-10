@@ -5,7 +5,7 @@
 # ----------------------------------------------------
 # Stage 1: Build Dependencies
 # ----------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN npm ci --only=production
 # ----------------------------------------------------
 # Stage 2: Production Runtime
 # ----------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 # Upgrade npm globally to fix vulnerability scan failures in base image bundled tools (tar, sigstore, etc.)
 RUN npm install -g npm@latest
