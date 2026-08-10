@@ -9,8 +9,8 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Upgrade npm globally to ensure package install updates vulnerable bundled dependencies
-RUN npm install -g npm@latest
+# Keep Node 22's bundled npm here — npm@latest (v12+) blocks native install scripts
+# by default, which leaves sqlite3 without bindings.
 
 # Install native compilation build dependencies required for native modules (e.g., sqlite3)
 # py3-setuptools is required by node-gyp on Alpine
@@ -21,10 +21,9 @@ ENV PYTHON=/usr/bin/python3
 # Copy dependency specifications
 COPY package*.json ./
 
-# Install prod deps and force-compile sqlite3 for this Node/Alpine ABI
-# (prebuilds often missing for Node 22 + musl → CrashLoop without rebuild)
+# Install prod deps; sqlite3 must compile on Alpine (no reliable Node 22 musl prebuild)
 RUN npm ci --omit=dev && \
-    npm rebuild sqlite3 --build-from-source && \
+    npm rebuild sqlite3 && \
     find node_modules/sqlite3 -name 'node_sqlite3.node' | grep -q .
 
 # ----------------------------------------------------
