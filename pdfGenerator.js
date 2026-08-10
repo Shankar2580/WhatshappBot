@@ -128,6 +128,16 @@ async function generateBookingPdf(bookingData, outputPath) {
             doc.font('Helvetica-Bold').text('Registered Mobile:', 320, y + 48);
             doc.font('Helvetica').text(bookingData.user_phone || 'N/A', 410, y + 48);
 
+            // Devotee Photo Frame (Passport Photo)
+            if (bookingData.selfie_path && fs.existsSync(bookingData.selfie_path)) {
+                try {
+                    doc.rect(474, y + 7, 67, 67).stroke('#CCCCCC');
+                    doc.image(bookingData.selfie_path, 475, y + 8, { width: 65, height: 65 });
+                } catch (imgErr) {
+                    console.error('Error drawing devotee selfie on PDF ticket:', imgErr.message);
+                }
+            }
+
             // -------------------------------------------------------------
             // Section 1.5: Payment Details Card
             // -------------------------------------------------------------
@@ -147,7 +157,7 @@ async function generateBookingPdf(bookingData, outputPath) {
 
             // Right Column
             doc.font('Helvetica-Bold').text('Amount Paid:', 320, y + 28);
-            doc.font('Helvetica').text(`₹ ${bookingData.amount_paid || 'N/A'}`, 410, y + 28);
+            doc.font('Helvetica').text(`Rs. ${bookingData.amount_paid || 'N/A'}`, 410, y + 28);
 
             doc.font('Helvetica-Bold').text('Payment Gateway:', 320, y + 42);
             doc.font('Helvetica').text('Razorpay API', 410, y + 42);

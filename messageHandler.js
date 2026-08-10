@@ -26,6 +26,16 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.IDLE) {
         if (msgText === 'book' || msgText === 'hi' || msgText === 'hello') {
             stateManager.setState(phone, STATES.ASK_LANGUAGE);
+            
+            // Send Ujjain Mahakal Temple Logo Image first
+            try {
+                const logoPath = path.join(__dirname, 'shrimahakaleshwar_logo.png');
+                const mediaId = await whatsappApi.uploadMedia(logoPath, 'image/png');
+                await whatsappApi.sendImageMessage(phone, mediaId, '🔱 Shri Mahakaleshwar Temple, Ujjain 🔱');
+            } catch (logoErr) {
+                console.error('Error sending temple logo image:', logoErr);
+            }
+
             const bodyText = t('en', 'welcome');
             const buttons = [
                 { id: 'lang_en', title: t('en', 'btn_english') },
@@ -136,13 +146,30 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         
         if (selectedDate) {
             stateManager.setTempData(phone, { date: selectedDate });
-            const availableSlots = await slots.getAvailableSlotsForDate(selectedDate);
             
-            if (availableSlots.length > 0) {
-                stateManager.setState(phone, STATES.CHOOSE_SLOT);
-                await whatsappApi.sendSlotButtons(phone, t(lang, 'choose_slot'), availableSlots);
+            const data = stateManager.getTempData(phone);
+            const aarti = data?.aarti;
+
+            if (aarti === 'Bhasma Aarti') {
+                stateManager.setTempData(phone, { slot: '4:00 AM - 6:00 AM' });
+                stateManager.setState(phone, STATES.ASK_NUM_PEOPLE);
+                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_num_people'));
+            } else if (aarti === 'Sandhya Aarti') {
+                stateManager.setTempData(phone, { slot: '5:30 PM - 7:00 PM' });
+                stateManager.setState(phone, STATES.ASK_NUM_PEOPLE);
+                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_num_people'));
+            } else if (aarti === 'Shayan Aarti') {
+                stateManager.setTempData(phone, { slot: '10:30 PM - 11:00 PM' });
+                stateManager.setState(phone, STATES.ASK_NUM_PEOPLE);
+                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_num_people'));
             } else {
-                await whatsappApi.sendTextMessage(phone, t(lang, 'no_slots', selectedDate));
+                const availableSlots = await slots.getAvailableSlotsForDate(selectedDate);
+                if (availableSlots.length > 0) {
+                    stateManager.setState(phone, STATES.CHOOSE_SLOT);
+                    await whatsappApi.sendSlotButtons(phone, t(lang, 'choose_slot'), availableSlots);
+                } else {
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'no_slots', selectedDate));
+                }
             }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_date'));
@@ -469,12 +496,12 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
                  // Define price based on Aarti type
                  const aartiPrices = {
-                     'Bhasma Aarti': 100,
+                     'Bhasma Aarti': 200,
                      'Shighra Darshan': 250,
-                     'Shayan Aarti': 50,
-                     'Sandhya Aarti': 50
+                     'Shayan Aarti': 250,
+                     'Sandhya Aarti': 250
                  };
-                 const unitPrice = aartiPrices[data.aarti] || 50;
+                 const unitPrice = aartiPrices[data.aarti] || 250;
                  const totalPrice = unitPrice * data.numPeople;
 
                  // Save booking as 'pending_payment'

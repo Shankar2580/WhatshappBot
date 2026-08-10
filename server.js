@@ -9,6 +9,7 @@ const path = require('path');
 const pdfGenerator = require('./pdfGenerator');
 const whatsappApi = require('./whatsappApi');
 const { t } = require('./translations');
+const fs = require('fs');
 
 
 const app = express();
@@ -158,6 +159,24 @@ app.post('/webhook/razorpay', async (req, res) => {
                 // Update booking status and save payment details in the database
                 await database.confirmBookingPayment(bookingRef, paymentId, amountPaid);
 
+                // Download devotee selfie from WhatsApp media servers if photo_id is available
+                let tempSelfiePath = null;
+                if (booking.photo_id) {
+                    try {
+                        const tempDir = path.join(__dirname, 'public', 'downloaded_photos');
+                        if (!fs.existsSync(tempDir)) {
+                            fs.mkdirSync(tempDir, { recursive: true });
+                        }
+                        tempSelfiePath = path.join(tempDir, `selfie_${bookingRef}.jpg`);
+                        const buffer = await whatsappApi.downloadMediaBuffer(booking.photo_id);
+                        fs.writeFileSync(tempSelfiePath, buffer);
+                        console.log(`[Razorpay Webhook] Successfully downloaded devotee selfie to: ${tempSelfiePath}`);
+                    } catch (dlErr) {
+                        console.error('[Razorpay Webhook] Error downloading devotee selfie for ticket pass:', dlErr.message);
+                        tempSelfiePath = null;
+                    }
+                }
+
                 // Send confirmation message
                 const lang = booking.language || 'en';
                 await whatsappApi.sendTextMessage(phone, t(lang, 'booking_success'));
@@ -176,13 +195,24 @@ app.post('/webhook/razorpay', async (req, res) => {
                         num_people: booking.num_people,
                         guests: guests,
                         payment_id: paymentId,
-                        amount_paid: amountPaid
+                        amount_paid: amountPaid,
+                        selfie_path: tempSelfiePath
                     }, pdfPath);
 
                     const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
                     await whatsappApi.sendDocumentMessage(phone, mediaId, `${bookingRef}.pdf`, t(lang, 'pdf_caption'));
                 } catch (pdfErr) {
                     console.error('[Razorpay Webhook] Error generating or sending PDF pass:', pdfErr);
+                } finally {
+                    // Clean up downloaded selfie to preserve disk space
+                    if (tempSelfiePath && fs.existsSync(tempSelfiePath)) {
+                        try {
+                            fs.unlinkSync(tempSelfiePath);
+                            console.log(`[Razorpay Webhook] Cleaned up temporary devotee selfie file: ${tempSelfiePath}`);
+                        } catch (unlinkErr) {
+                            console.error('[Razorpay Webhook] Error deleting temp selfie:', unlinkErr.message);
+                        }
+                    }
                 }
             } else {
                 console.log(`[Razorpay Webhook] Booking ${bookingRef} already processed (status: ${booking.status})`);

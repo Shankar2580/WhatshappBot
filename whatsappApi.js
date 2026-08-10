@@ -180,6 +180,22 @@ async function downloadMediaBuffer(mediaId) {
     }
 }
 
+async function sendImageMessage(phone, mediaId, caption) {
+    try {
+        await api.post(BASE_URL, {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'image',
+            image: {
+                id: mediaId,
+                caption: caption
+            }
+        });
+    } catch (error) {
+        console.error('Error sending image message:', error?.response?.data || error.message);
+    }
+}
+
 module.exports = {
     sendTextMessage,
     sendSlotButtons,
@@ -189,6 +205,7 @@ module.exports = {
     sendFlowMessage,
     uploadMedia,
     sendDocumentMessage,
-    downloadMediaBuffer
+    downloadMediaBuffer,
+    sendImageMessage
 };
 
