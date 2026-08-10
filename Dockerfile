@@ -13,13 +13,19 @@ WORKDIR /app
 RUN npm install -g npm@latest
 
 # Install native compilation build dependencies required for native modules (e.g., sqlite3)
-RUN apk add --no-cache python3 make g++ gcc
+# py3-setuptools is required by node-gyp on Alpine
+RUN apk add --no-cache python3 make g++ gcc py3-setuptools
+
+ENV PYTHON=/usr/bin/python3
 
 # Copy dependency specifications
 COPY package*.json ./
 
-# Clean production dependency install
-RUN npm ci --only=production
+# Install prod deps and force-compile sqlite3 for this Node/Alpine ABI
+# (prebuilds often missing for Node 22 + musl → CrashLoop without rebuild)
+RUN npm ci --omit=dev && \
+    npm rebuild sqlite3 --build-from-source && \
+    find node_modules/sqlite3 -name 'node_sqlite3.node' | grep -q .
 
 # ----------------------------------------------------
 # Stage 2: Production Runtime
