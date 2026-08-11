@@ -27,13 +27,13 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (msgText === 'book' || msgText === 'hi' || msgText === 'hello') {
             stateManager.setState(phone, STATES.ASK_LANGUAGE);
             
-            // Send Ujjain Mahakal Temple Logo Image first
+            // Send Ujjain Mahakal Temple Image first
             try {
-                const logoPath = path.join(__dirname, 'shrimahakaleshwar_logo.png');
+                const logoPath = path.join(__dirname, 'mahakaleshwar_welcome.png');
                 const mediaId = await whatsappApi.uploadMedia(logoPath, 'image/png');
                 await whatsappApi.sendImageMessage(phone, mediaId, '🔱 Shri Mahakaleshwar Temple, Ujjain 🔱');
             } catch (logoErr) {
-                console.error('Error sending temple logo image:', logoErr);
+                console.error('Error sending temple welcome image:', logoErr);
             }
 
             const bodyText = t('en', 'welcome');
