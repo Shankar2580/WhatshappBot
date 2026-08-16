@@ -267,8 +267,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (/^\d{12}$/.test(msgText)) {
             stateManager.setTempData(phone, { aadhaar: msgText });
             
-            // --- BYPASSED: KYCBox Aadhaar OTP Generation ---
-            /*
             await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
             try {
                 const res = await kycBoxApi.generateOtp(msgText);
@@ -284,45 +282,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 console.error("KYCBox generateOtp error:", err?.response?.data || err.message);
                 const detail = err?.response?.data?.message || err?.response?.data?.detail || err.message || '';
                 await whatsappApi.sendTextMessage(phone, `Failed to generate OTP via Aadhaar API: ${detail}. Please check the Aadhaar number and try again.`);
-            }
-            */
-            
-            // --- DIRECT BYPASS ROUTE ---
-            const data = stateManager.getTempData(phone);
-            const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
-            
-            if (!data.guests) {
-                data.guests = [];
-            }
-            data.guests.push({
-                id_type: 'aadhaar',
-                kyc_verified_name: verifiedName,
-                aadhaar: msgText,
-                kyc_request_id: 'bypassed',
-                gender: 'Male',
-                dob: '15-08-1990',
-                address: 'Bypassed',
-                photo_url: ''
-            });
-
-            await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
-
-            const currentIdx = data.currentGuestIndex || 1;
-            const numPeople = data.numPeople || 1;
-
-            if (currentIdx < numPeople) {
-                data.currentGuestIndex = currentIdx + 1;
-                stateManager.setTempData(phone, data);
-                stateManager.setState(phone, STATES.ASK_ID_TYPE);
-                const buttons = [
-                    { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
-                    { id: 'doc_passport', title: t(lang, 'btn_passport') }
-                ];
-                await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
-            } else {
-                stateManager.setTempData(phone, data);
-                stateManager.setState(phone, STATES.ASK_PHOTO);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
             }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
@@ -398,8 +357,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             await whatsappApi.sendTextMessage(phone, t(lang, 'verifying_passport'));
             const data = stateManager.getTempData(phone);
             try {
-                // --- BYPASSED: KYCBox Passport OCR Call ---
-                /*
                 const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
                 const ocrRes = await kycBoxApi.verifyPassportOcr(imageBuffer, 'passport.jpg');
                 console.log("KYCBox Passport OCR result:", JSON.stringify(ocrRes, null, 2));
@@ -423,13 +380,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const passportNum = val(ocrData.passport_number) || val(ocrData.document_number) || "Verified";
                 const dob = val(ocrData.dob) || val(ocrData.date_of_birth) || "15-08-1990";
                 const sex = val(ocrData.sex) || val(ocrData.gender) || "Male";
-                */
-
-                // --- DIRECT BYPASS ROUTE ---
-                const verifiedName = `Passport Devotee ${data.currentGuestIndex || 1}`;
-                const passportNum = "BYPASSED";
-                const sex = "Male";
-                const dob = "15-08-1990";
  
                 if (!data.guests) {
                     data.guests = [];
@@ -441,7 +391,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     passport_number: passportNum,
                     gender: sex,
                     dob: dob,
-                    country: 'IND'
+                    country: val(ocrData.country) || 'IND'
                 });
  
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
