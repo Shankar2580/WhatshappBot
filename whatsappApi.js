@@ -89,7 +89,7 @@ async function sendConfirmationButtons(phone, bodyText, btnYesLabel, btnNoLabel)
     await sendInteractiveButtons(phone, bodyText, buttons);
 }
 
-async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken) {
+async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken, flowData = {}) {
     try {
         await api.post(BASE_URL, {
             messaging_product: 'whatsapp',
@@ -107,7 +107,8 @@ async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken) {
                         flow_cta: buttonText,
                         flow_action: 'navigate',
                         flow_action_payload: {
-                            screen: 'date_selection_screen'
+                            screen: 'date_selection_screen',
+                            data: flowData
                         }
                     }
                 }

@@ -82,9 +82,23 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             const bodyText = t(lang, 'aarti_selected', buttonPayload);
             const buttonText = t(lang, 'btn_select_date');
             
+            // Calculate dynamic min and max dates for the WhatsApp Flow DatePicker
+            const minD = new Date();
+            minD.setDate(minD.getDate() + 1); // Tomorrow
+            const maxD = new Date();
+            maxD.setDate(maxD.getDate() + 30); // 30 days from now
+
+            // Format as YYYY-MM-DD
+            const minDateStr = minD.toISOString().split('T')[0];
+            const maxDateStr = maxD.toISOString().split('T')[0];
+
             // Use WhatsApp Flow if configured, otherwise fallback to interactive list message
             if (process.env.WHATSAPP_FLOW_ID) {
-                await whatsappApi.sendFlowMessage(phone, bodyText, buttonText, process.env.WHATSAPP_FLOW_ID, 'FLOW_TOKEN_123');
+                const flowData = {
+                    min_date: minDateStr,
+                    max_date: maxDateStr
+                };
+                await whatsappApi.sendFlowMessage(phone, bodyText, buttonText, process.env.WHATSAPP_FLOW_ID, 'FLOW_TOKEN_123', flowData);
             } else {
                 // --- FALLBACK (Option A): Send List of Next 10 Days ---
                 const dateRows = [];
