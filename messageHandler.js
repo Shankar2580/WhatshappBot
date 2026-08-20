@@ -280,21 +280,53 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.ASK_AADHAAR) {
         if (/^\d{12}$/.test(msgText)) {
             stateManager.setTempData(phone, { aadhaar: msgText });
-            await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
-            try {
-                const res = await kycBoxApi.generateOtp(msgText);
-                console.log("KYCBox generateOtp response:", JSON.stringify(res, null, 2));
-                const requestId = res.request_id || res.data?.request_id || res.result?.request_id || res.id;
-                if (!requestId) {
-                    throw new Error("No request_id returned from KYCBox OTP generator");
+            if (process.env.BYPASS_KYC === 'true') {
+                const data = stateManager.getTempData(phone);
+                const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
+                
+                if (!data.guests) data.guests = [];
+                data.guests.push({
+                    id_type: 'aadhaar',
+                    kyc_verified_name: verifiedName,
+                    aadhaar: msgText
+                });
+
+                await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
+                
+                const currentIdx = data.currentGuestIndex || 1;
+                const numPeople = data.numPeople || 1;
+
+                if (currentIdx < numPeople) {
+                    data.currentGuestIndex = currentIdx + 1;
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_ID_TYPE);
+                    const buttons = [
+                        { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
+                        { id: 'doc_passport', title: t(lang, 'btn_passport') }
+                    ];
+                    await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
+                } else {
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_PHOTO);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                 }
-                stateManager.setTempData(phone, { kycRequestId: requestId });
-                stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
-            } catch (err) {
-                console.error("KYCBox generateOtp error:", err?.response?.data || err.message);
-                const detail = err?.response?.data?.message || err?.response?.data?.detail || err.message || '';
-                await whatsappApi.sendTextMessage(phone, `Failed to generate OTP via Aadhaar API: ${detail}. Please check the Aadhaar number and try again.`);
+            } else {
+                await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
+                try {
+                    const res = await kycBoxApi.generateOtp(msgText);
+                    console.log("KYCBox generateOtp response:", JSON.stringify(res, null, 2));
+                    const requestId = res.request_id || res.data?.request_id || res.result?.request_id || res.id;
+                    if (!requestId) {
+                        throw new Error("No request_id returned from KYCBox OTP generator");
+                    }
+                    stateManager.setTempData(phone, { kycRequestId: requestId });
+                    stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
+                } catch (err) {
+                    console.error("KYCBox generateOtp error:", err?.response?.data || err.message);
+                    const detail = err?.response?.data?.message || err?.response?.data?.detail || err.message || '';
+                    await whatsappApi.sendTextMessage(phone, `Failed to generate OTP via Aadhaar API: ${detail}. Please check the Aadhaar number and try again.`);
+                }
             }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
@@ -367,50 +399,23 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
     if (state === STATES.ASK_PASSPORT_IMAGE) {
         if (imagePayload) {
-            await whatsappApi.sendTextMessage(phone, t(lang, 'verifying_passport'));
-            const data = stateManager.getTempData(phone);
-            try {
-                const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
-                const ocrRes = await kycBoxApi.verifyPassportOcr(imageBuffer, 'passport.jpg');
-                console.log("KYCBox Passport OCR result:", JSON.stringify(ocrRes, null, 2));
-
-                const ocrData = ocrRes.data?.data || ocrRes.data || ocrRes.result || ocrRes;
+            if (process.env.BYPASS_KYC === 'true') {
+                const data = stateManager.getTempData(phone);
+                const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
                 
-                // Extract string from string or object { value: "..." }
-                const val = (item) => (typeof item === 'object' && item !== null ? (item.value || item.text || item.val) : item);
-
-                const gName = val(ocrData.given_names) || val(ocrData.given_name) || val(ocrData.first_name);
-                const sName = val(ocrData.surname) || val(ocrData.last_name);
-                const fName = val(ocrData.name) || val(ocrData.full_name);
-
-                let verifiedName = 'Passport Holder';
-                if (gName || sName) {
-                    verifiedName = `${gName || ''} ${sName || ''}`.trim();
-                } else if (fName) {
-                    verifiedName = fName;
-                }
-
-                const passportNum = val(ocrData.passport_number) || val(ocrData.document_number) || "Verified";
-                const dob = val(ocrData.dob) || val(ocrData.date_of_birth) || "15-08-1990";
-                const sex = val(ocrData.sex) || val(ocrData.gender) || "Male";
- 
-                if (!data.guests) {
-                    data.guests = [];
-                }
-
+                if (!data.guests) data.guests = [];
                 data.guests.push({
                     id_type: 'passport',
-                    kyc_verified_name: verifiedName,
-                    passport_number: passportNum,
-                    gender: sex,
-                    dob: dob,
-                    country: val(ocrData.country) || 'IND'
+                    kyc_verified_name: verifiedName
                 });
- 
+
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
- 
-                if (data.currentGuestIndex < data.numPeople) {
-                    data.currentGuestIndex++;
+                
+                const currentIdx = data.currentGuestIndex || 1;
+                const numPeople = data.numPeople || 1;
+
+                if (currentIdx < numPeople) {
+                    data.currentGuestIndex = currentIdx + 1;
                     stateManager.setTempData(phone, data);
                     stateManager.setState(phone, STATES.ASK_ID_TYPE);
                     const buttons = [
@@ -423,9 +428,67 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     stateManager.setState(phone, STATES.ASK_PHOTO);
                     await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                 }
-            } catch (error) {
-                console.error('Passport OCR error:', error.message);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'passport_failed'));
+            } else {
+                await whatsappApi.sendTextMessage(phone, t(lang, 'verifying_passport'));
+                const data = stateManager.getTempData(phone);
+                try {
+                    const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
+                    const ocrRes = await kycBoxApi.verifyPassportOcr(imageBuffer, 'passport.jpg');
+                    console.log("KYCBox Passport OCR result:", JSON.stringify(ocrRes, null, 2));
+
+                    const ocrData = ocrRes.data?.data || ocrRes.data || ocrRes.result || ocrRes;
+                    
+                    // Extract string from string or object { value: "..." }
+                    const val = (item) => (typeof item === 'object' && item !== null ? (item.value || item.text || item.val) : item);
+
+                    const gName = val(ocrData.given_names) || val(ocrData.given_name) || val(ocrData.first_name);
+                    const sName = val(ocrData.surname) || val(ocrData.last_name);
+                    const fName = val(ocrData.name) || val(ocrData.full_name);
+
+                    let verifiedName = 'Passport Holder';
+                    if (gName || sName) {
+                        verifiedName = `${gName || ''} ${sName || ''}`.trim();
+                    } else if (fName) {
+                        verifiedName = fName;
+                    }
+
+                    const passportNum = val(ocrData.passport_number) || val(ocrData.document_number) || "Verified";
+                    const dob = val(ocrData.dob) || val(ocrData.date_of_birth) || "15-08-1990";
+                    const sex = val(ocrData.sex) || val(ocrData.gender) || "Male";
+     
+                    if (!data.guests) {
+                        data.guests = [];
+                    }
+
+                    data.guests.push({
+                        id_type: 'passport',
+                        kyc_verified_name: verifiedName,
+                        passport_number: passportNum,
+                        gender: sex,
+                        dob: dob,
+                        country: val(ocrData.country) || 'IND'
+                    });
+     
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
+     
+                    if (data.currentGuestIndex < data.numPeople) {
+                        data.currentGuestIndex++;
+                        stateManager.setTempData(phone, data);
+                        stateManager.setState(phone, STATES.ASK_ID_TYPE);
+                        const buttons = [
+                            { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
+                            { id: 'doc_passport', title: t(lang, 'btn_passport') }
+                        ];
+                        await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
+                    } else {
+                        stateManager.setTempData(phone, data);
+                        stateManager.setState(phone, STATES.ASK_PHOTO);
+                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
+                    }
+                } catch (error) {
+                    console.error('Passport OCR error:', error.message);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'passport_failed'));
+                }
             }
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_passport_image'));
