@@ -280,39 +280,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.ASK_AADHAAR) {
         if (/^\d{12}$/.test(msgText)) {
             stateManager.setTempData(phone, { aadhaar: msgText });
-            // --- BYPASS BLOCK START ---
-            const data = stateManager.getTempData(phone);
-            const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
-            
-            if (!data.guests) data.guests = [];
-            data.guests.push({
-                id_type: 'aadhaar',
-                kyc_verified_name: verifiedName,
-                aadhaar: msgText
-            });
-
-            await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
-            
-            const currentIdx = data.currentGuestIndex || 1;
-            const numPeople = data.numPeople || 1;
-
-            if (currentIdx < numPeople) {
-                data.currentGuestIndex = currentIdx + 1;
-                stateManager.setTempData(phone, data);
-                stateManager.setState(phone, STATES.ASK_ID_TYPE);
-                const buttons = [
-                    { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
-                    { id: 'doc_passport', title: t(lang, 'btn_passport') }
-                ];
-                await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
-            } else {
-                stateManager.setTempData(phone, data);
-                stateManager.setState(phone, STATES.ASK_PHOTO);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
-            }
-            // --- BYPASS BLOCK END ---
-
-            /* // --- KYC BOX LIVE API CODE ---
             await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
             try {
                 const res = await kycBoxApi.generateOtp(msgText);
@@ -329,7 +296,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const detail = err?.response?.data?.message || err?.response?.data?.detail || err.message || '';
                 await whatsappApi.sendTextMessage(phone, `Failed to generate OTP via Aadhaar API: ${detail}. Please check the Aadhaar number and try again.`);
             }
-            */
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_aadhaar'));
         }
@@ -401,38 +367,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
     if (state === STATES.ASK_PASSPORT_IMAGE) {
         if (imagePayload) {
-            // --- BYPASS BLOCK START ---
-            const data = stateManager.getTempData(phone);
-            const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
-            
-            if (!data.guests) data.guests = [];
-            data.guests.push({
-                id_type: 'passport',
-                kyc_verified_name: verifiedName
-            });
-
-            await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
-            
-            const currentIdx = data.currentGuestIndex || 1;
-            const numPeople = data.numPeople || 1;
-
-            if (currentIdx < numPeople) {
-                data.currentGuestIndex = currentIdx + 1;
-                stateManager.setTempData(phone, data);
-                stateManager.setState(phone, STATES.ASK_ID_TYPE);
-                const buttons = [
-                    { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
-                    { id: 'doc_passport', title: t(lang, 'btn_passport') }
-                ];
-                await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
-            } else {
-                stateManager.setTempData(phone, data);
-                stateManager.setState(phone, STATES.ASK_PHOTO);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
-            }
-            // --- BYPASS BLOCK END ---
-
-            /* // --- KYC BOX LIVE API CODE ---
             await whatsappApi.sendTextMessage(phone, t(lang, 'verifying_passport'));
             const data = stateManager.getTempData(phone);
             try {
@@ -493,7 +427,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 console.error('Passport OCR error:', error.message);
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_failed'));
             }
-            */
         } else {
             await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_passport_image'));
         }
