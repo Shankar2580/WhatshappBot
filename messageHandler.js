@@ -281,13 +281,35 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (/^\d{12}$/.test(msgText)) {
             stateManager.setTempData(phone, { aadhaar: msgText });
             if (process.env.BYPASS_KYC === 'true') {
-                await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
-                // Add a small delay for realism
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                const data = stateManager.getTempData(phone);
+                const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
                 
-                stateManager.setTempData(phone, { kycRequestId: 'MOCK_OTP_REQUEST_ID' });
-                stateManager.setState(phone, STATES.ASK_AADHAAR_OTP);
-                await whatsappApi.sendTextMessage(phone, t(lang, 'ask_otp'));
+                if (!data.guests) data.guests = [];
+                data.guests.push({
+                    id_type: 'aadhaar',
+                    kyc_verified_name: verifiedName,
+                    aadhaar: msgText
+                });
+
+                await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
+                
+                const currentIdx = data.currentGuestIndex || 1;
+                const numPeople = data.numPeople || 1;
+
+                if (currentIdx < numPeople) {
+                    data.currentGuestIndex = currentIdx + 1;
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_ID_TYPE);
+                    const buttons = [
+                        { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
+                        { id: 'doc_passport', title: t(lang, 'btn_passport') }
+                    ];
+                    await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
+                } else {
+                    stateManager.setTempData(phone, data);
+                    stateManager.setState(phone, STATES.ASK_PHOTO);
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
+                }
             } else {
                 await whatsappApi.sendTextMessage(phone, t(lang, 'generating_otp'));
                 try {
@@ -315,55 +337,6 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.ASK_AADHAAR_OTP) {
         if (/^\d{6}$/.test(msgText)) {
             const data = stateManager.getTempData(phone);
-            
-            if (process.env.BYPASS_KYC === 'true') {
-                if (msgText === '765834') {
-                    const verifiedName = "Shankarprasad Dhananjayprasad Mahto";
-                    const gender = "Male";
-                    const dob = "25-08-1980";
-                    const addressStr = "Varanasi, India";
-                    const photoUrl = "";
-                    
-                    if (!data.guests) {
-                        data.guests = [];
-                    }
-
-                    data.guests.push({
-                        id_type: 'aadhaar',
-                        kyc_verified_name: verifiedName,
-                        aadhaar: data.aadhaar,
-                        kyc_request_id: data.kycRequestId || 'MOCK_OTP_REQUEST_ID',
-                        gender: gender,
-                        dob: dob,
-                        address: addressStr,
-                        photo_url: photoUrl
-                    });
-
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
-
-                    const currentIdx = data.currentGuestIndex || 1;
-                    const numPeople = data.numPeople || 1;
-
-                    if (currentIdx < numPeople) {
-                        data.currentGuestIndex = currentIdx + 1;
-                        stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_ID_TYPE);
-                        const buttons = [
-                            { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
-                            { id: 'doc_passport', title: t(lang, 'btn_passport') }
-                        ];
-                        await whatsappApi.sendInteractiveButtons(phone, t(lang, 'ask_id_type', data.currentGuestIndex), buttons);
-                    } else {
-                        stateManager.setTempData(phone, data);
-                        stateManager.setState(phone, STATES.ASK_PHOTO);
-                        await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
-                    }
-                } else {
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
-                }
-                return;
-            }
-
             try {
                 if (!data.kycRequestId) {
                     throw new Error("OTP Session expired or missing request ID. Please type 'cancel' and try again.");
