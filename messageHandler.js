@@ -359,7 +359,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                         await whatsappApi.sendTextMessage(phone, t(lang, 'ask_photo'));
                     }
                 } else {
-                    await whatsappApi.sendTextMessage(phone, "Aadhaar OTP verification failed (Incorrect OTP). Please check the 6-digit OTP or try again.");
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_otp'));
                 }
                 return;
             }
