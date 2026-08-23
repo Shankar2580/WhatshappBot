@@ -25,7 +25,7 @@ app.get('/wb/health', (req, res) => {
 });
 
 // Webhook Verification (GET)
-app.get('/webhook', (req, res) => {
+app.get(['/webhook', '/wb/webhook'], (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -43,7 +43,7 @@ app.get('/webhook', (req, res) => {
 });
 
 // Webhook Reception (POST)
-app.post('/webhook', async (req, res) => {
+app.post(['/webhook', '/wb/webhook'], async (req, res) => {
     // ALWAYS respond 200 OK immediately
     res.sendStatus(200);
 
@@ -103,7 +103,7 @@ app.post('/webhook', async (req, res) => {
 });
 
 // Razorpay Webhook Endpoint
-app.post('/webhook/razorpay', async (req, res) => {
+app.post(['/webhook/razorpay', '/wb/webhook/razorpay'], async (req, res) => {
     // 1. Immediately acknowledge the receipt with 200 OK
     res.sendStatus(200);
 
