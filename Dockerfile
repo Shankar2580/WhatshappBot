@@ -5,26 +5,31 @@
 # ----------------------------------------------------
 # Stage 1: Build Dependencies
 # ----------------------------------------------------
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Upgrade npm globally to ensure package install updates vulnerable bundled dependencies
-RUN npm install -g npm@latest
+# Keep Node 22's bundled npm here — npm@latest (v12+) blocks native install scripts
+# by default, which leaves sqlite3 without bindings.
 
 # Install native compilation build dependencies required for native modules (e.g., sqlite3)
-RUN apk add --no-cache python3 make g++ gcc
+# py3-setuptools is required by node-gyp on Alpine
+RUN apk add --no-cache python3 make g++ gcc py3-setuptools
+
+ENV PYTHON=/usr/bin/python3
 
 # Copy dependency specifications
 COPY package*.json ./
 
-# Clean production dependency install
-RUN npm ci --only=production
+# Install prod deps; sqlite3 must compile on Alpine (no reliable Node 22 musl prebuild)
+RUN npm ci --omit=dev && \
+    npm rebuild sqlite3 && \
+    find node_modules/sqlite3 -name 'node_sqlite3.node' | grep -q .
 
 # ----------------------------------------------------
 # Stage 2: Production Runtime
 # ----------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 # Upgrade npm globally to fix vulnerability scan failures in base image bundled tools (tar, sigstore, etc.)
 RUN npm install -g npm@latest
