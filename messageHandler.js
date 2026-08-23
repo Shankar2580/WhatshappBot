@@ -14,7 +14,7 @@ const razorpayApi = require('./razorpayApi');
 async function processMessage(phone, text, buttonPayload, imagePayload) {
     const msgText = (text || '').trim().toLowerCase();
     const lang = stateManager.getTempData(phone)?.language || 'en';
-    
+
     if (msgText === 'cancel') {
         stateManager.clearUser(phone);
         await whatsappApi.sendTextMessage(phone, t(lang, 'cancelled'));
@@ -26,7 +26,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.IDLE) {
         if (msgText === 'book' || msgText === 'hi' || msgText === 'hello') {
             stateManager.setState(phone, STATES.ASK_LANGUAGE);
-            
+
             // Send Ujjain Mahakal Temple Image first
             try {
                 const logoPath = path.join(__dirname, 'mahakaleshwar_welcome.png');
@@ -51,7 +51,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             const selectedLang = buttonPayload === 'lang_en' ? 'en' : 'hi';
             stateManager.setTempData(phone, { language: selectedLang });
             stateManager.setState(phone, STATES.CHOOSE_AARTI);
-            
+
             const bodyText = t(selectedLang, 'choose_aarti');
             const buttonText = t(selectedLang, 'btn_select_aarti');
             const sections = [{
@@ -78,10 +78,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (buttonPayload) {
             stateManager.setTempData(phone, { aarti: buttonPayload });
             stateManager.setState(phone, STATES.ASK_DATE_FLOW);
-            
+
             const bodyText = t(lang, 'aarti_selected', buttonPayload);
             const buttonText = t(lang, 'btn_select_date');
-            
+
             // Calculate dynamic min and max dates for the WhatsApp Flow DatePicker
             const minD = new Date();
             minD.setDate(minD.getDate() + 1); // Tomorrow
@@ -129,7 +129,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
     if (state === STATES.ASK_DATE_FLOW) {
         let selectedDate = null;
-        
+
         try {
             if (buttonPayload) {
                 const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
@@ -148,16 +148,16 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     selectedDate = msgText;
                 }
             }
-        } catch(e) {
+        } catch (e) {
             console.error('Error parsing date:', e);
         }
-        
+
         // Standardize YYYY-MM-DD format from WhatsApp Flow to DD/MM/YYYY
         if (selectedDate && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) {
             const parts = selectedDate.split('-');
             selectedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
-        
+
         if (selectedDate) {
             // Validate that the date is within the next 30 days
             try {
@@ -166,22 +166,22 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const month = parseInt(parts[1], 10) - 1;
                 const year = parseInt(parts[2], 10);
                 const targetDate = new Date(year, month, day);
-                
+
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-                
+
                 const diffTime = targetDate - today;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+
                 if (diffDays < 1 || diffDays > 30) {
                     const minDate = new Date();
                     minDate.setDate(minDate.getDate() + 1);
                     const maxDate = new Date();
                     maxDate.setDate(maxDate.getDate() + 30);
-                    
+
                     const minStr = `${String(minDate.getDate()).padStart(2, '0')}/${String(minDate.getMonth() + 1).padStart(2, '0')}/${minDate.getFullYear()}`;
                     const maxStr = `${String(maxDate.getDate()).padStart(2, '0')}/${String(maxDate.getMonth() + 1).padStart(2, '0')}/${maxDate.getFullYear()}`;
-                    
+
                     await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_date_range', minStr, maxStr));
                     return;
                 }
@@ -192,7 +192,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             }
 
             stateManager.setTempData(phone, { date: selectedDate });
-            
+
             const data = stateManager.getTempData(phone);
             const aarti = data?.aarti;
 
@@ -246,7 +246,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (!isNaN(num) && num > 0 && num <= 4) {
             stateManager.setTempData(phone, { numPeople: num, guests: [], currentGuestIndex: 1 });
             stateManager.setState(phone, STATES.ASK_ID_TYPE);
-            
+
             const buttons = [
                 { id: 'doc_aadhaar', title: t(lang, 'btn_aadhaar') },
                 { id: 'doc_passport', title: t(lang, 'btn_passport') }
@@ -283,7 +283,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             if (process.env.BYPASS_KYC === 'true') {
                 const data = stateManager.getTempData(phone);
                 const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
-                
+
                 if (!data.guests) data.guests = [];
                 data.guests.push({
                     id_type: 'aadhaar',
@@ -292,7 +292,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 });
 
                 await whatsappApi.sendTextMessage(phone, t(lang, 'aadhaar_verified', verifiedName));
-                
+
                 const currentIdx = data.currentGuestIndex || 1;
                 const numPeople = data.numPeople || 1;
 
@@ -351,7 +351,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 const dob = kycData.dob || kycData.date_of_birth || "15-08-1990";
                 const addressStr = typeof kycData.address === 'object' ? JSON.stringify(kycData.address) : (kycData.address || "Verified Address");
                 const photoUrl = kycData.photo_link || kycData.profile_image || "";
-                
+
                 if (!data.guests) {
                     data.guests = [];
                 }
@@ -402,7 +402,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
             if (process.env.BYPASS_KYC === 'true') {
                 const data = stateManager.getTempData(phone);
                 const verifiedName = `Devotee ${data.currentGuestIndex || 1}`;
-                
+
                 if (!data.guests) data.guests = [];
                 data.guests.push({
                     id_type: 'passport',
@@ -410,7 +410,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                 });
 
                 await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
-                
+
                 const currentIdx = data.currentGuestIndex || 1;
                 const numPeople = data.numPeople || 1;
 
@@ -437,7 +437,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     console.log("KYCBox Passport OCR result:", JSON.stringify(ocrRes, null, 2));
 
                     const ocrData = ocrRes.data?.data || ocrRes.data || ocrRes.result || ocrRes;
-                    
+
                     // Extract string from string or object { value: "..." }
                     const val = (item) => (typeof item === 'object' && item !== null ? (item.value || item.text || item.val) : item);
 
@@ -455,7 +455,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                     const passportNum = val(ocrData.passport_number) || val(ocrData.document_number) || "Verified";
                     const dob = val(ocrData.dob) || val(ocrData.date_of_birth) || "15-08-1990";
                     const sex = val(ocrData.sex) || val(ocrData.gender) || "Male";
-     
+
                     if (!data.guests) {
                         data.guests = [];
                     }
@@ -468,9 +468,9 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                         dob: dob,
                         country: val(ocrData.country) || 'IND'
                     });
-     
+
                     await whatsappApi.sendTextMessage(phone, t(lang, 'passport_verified', verifiedName));
-     
+
                     if (data.currentGuestIndex < data.numPeople) {
                         data.currentGuestIndex++;
                         stateManager.setTempData(phone, data);
@@ -495,14 +495,14 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         }
         return;
     }
-    
+
     if (state === STATES.ASK_PHOTO) {
         if (imagePayload) {
             await whatsappApi.sendTextMessage(phone, "Processing photo, please wait...");
             try {
                 const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
                 const data = stateManager.getTempData(phone);
-                
+
                 // Construct a unique person_id matching the primary guest's details
                 const primaryGuestName = (data.guests[0]?.kyc_verified_name || 'Guest').replace(/[^a-zA-Z0-9]/g, '_');
                 const personId = `${phone}_${primaryGuestName}`;
@@ -513,7 +513,7 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
 
                 stateManager.setTempData(phone, { photoId: imagePayload });
                 stateManager.setState(phone, STATES.CONFIRM);
-                
+
                 const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
                 const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
                 await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
@@ -542,63 +542,63 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.CONFIRM) {
         if (buttonPayload === 'confirm_yes' || msgText === 'yes') {
             const data = stateManager.getTempData(phone);
-            
+
             const isDuplicate = await database.checkDuplicate(phone, data.date, data.slot);
             if (isDuplicate) {
-                 await whatsappApi.sendTextMessage(phone, t(lang, 'duplicate_booking'));
-                 stateManager.clearUser(phone);
+                await whatsappApi.sendTextMessage(phone, t(lang, 'duplicate_booking'));
+                stateManager.clearUser(phone);
             } else {
-                 const randomId = Math.floor(1000 + Math.random() * 9000);
-                 const dateClean = (data.date || '').replace(/\D/g, '');
-                 const bookingRef = `MAHAKAL-${dateClean || '2026'}-${randomId}`;
+                const randomId = Math.floor(1000 + Math.random() * 9000);
+                const dateClean = (data.date || '').replace(/\D/g, '');
+                const bookingRef = `MAHAKAL-${dateClean || '2026'}-${randomId}`;
 
-                 // Define price based on Aarti type
-                 const aartiPrices = {
-                     'Bhasma Aarti': 200,
-                     'Shighra Darshan': 250,
-                     'Shayan Aarti': 250,
-                     'Sandhya Aarti': 250
-                 };
-                 const unitPrice = aartiPrices[data.aarti] || 250;
-                 const totalPrice = unitPrice * data.numPeople;
+                // Define price based on Aarti type
+                const aartiPrices = {
+                    'Bhasma Aarti': 200,
+                    'Shighra Darshan': 250,
+                    'Shayan Aarti': 250,
+                    'Sandhya Aarti': 250
+                };
+                const unitPrice = aartiPrices[data.aarti] || 250;
+                const totalPrice = unitPrice * data.numPeople;
 
-                 // Save booking as 'pending_payment'
-                 await database.saveBooking({
-                     booking_ref: bookingRef,
-                     user_phone: phone,
-                     language: lang,
-                     aarti_type: data.aarti,
-                     num_people: data.numPeople,
-                     guests_data: JSON.stringify(data.guests),
-                     photo_id: data.photoId,
-                     booking_date: data.date,
-                     slot_time: data.slot,
-                     status: 'pending_payment'
-                 });
+                // Save booking as 'pending_payment'
+                await database.saveBooking({
+                    booking_ref: bookingRef,
+                    user_phone: phone,
+                    language: lang,
+                    aarti_type: data.aarti,
+                    num_people: data.numPeople,
+                    guests_data: JSON.stringify(data.guests),
+                    photo_id: data.photoId,
+                    booking_date: data.date,
+                    slot_time: data.slot,
+                    status: 'pending_payment'
+                });
 
-                 // Create Razorpay payment link
-                 try {
-                     const primaryGuestName = data.guests[0]?.kyc_verified_name || 'Devotee';
-                     const amountPaise = totalPrice * 100; // in paise
-                     const paymentLink = await razorpayApi.createPaymentLink(
-                         bookingRef,
-                         amountPaise,
-                         phone,
-                         data.aarti,
-                         primaryGuestName
-                     );
+                // Create Razorpay payment link
+                try {
+                    const primaryGuestName = data.guests[0]?.kyc_verified_name || 'Devotee';
+                    const amountPaise = totalPrice * 100; // in paise
+                    const paymentLink = await razorpayApi.createPaymentLink(
+                        bookingRef,
+                        amountPaise,
+                        phone,
+                        data.aarti,
+                        primaryGuestName
+                    );
 
-                     // Send payment link to user
-                     await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, paymentLink));
-                 } catch (payErr) {
-                     console.error('[Razorpay] Failed to generate payment link, fallback to mock link:', payErr);
-                     // Fallback mock link for testing/resilience
-                     const mockLink = `https://checkout.razorpay.com/v1/checkout.html?mock_booking_ref=${bookingRef}&mock_amount=${totalPrice}`;
-                     await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, mockLink));
-                 }
+                    // Send payment link to user
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, paymentLink));
+                } catch (payErr) {
+                    console.error('[Razorpay] Failed to generate payment link, fallback to mock link:', payErr);
+                    // Fallback mock link for testing/resilience
+                    const mockLink = `https://checkout.razorpay.com/v1/checkout.html?mock_booking_ref=${bookingRef}&mock_amount=${totalPrice}`;
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, mockLink));
+                }
 
-                 // Clear user state immediately (the webhook will handle ticket delivery upon payment)
-                 stateManager.clearUser(phone);
+                // Clear user state immediately (the webhook will handle ticket delivery upon payment)
+                stateManager.clearUser(phone);
             }
         } else if (buttonPayload === 'confirm_no' || msgText === 'no') {
             stateManager.clearUser(phone);
