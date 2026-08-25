@@ -224,7 +224,7 @@ app.post(['/webhook/razorpay', '/wb/webhook/razorpay'], async (req, res) => {
 });
 
 // API Endpoint to fetch devotee booking details by Face ID (person_id) & open turnstile gate
-app.get('/api/booking-by-face/:personId', async (req, res) => {
+app.get(['/api/booking-by-face/:personId', '/wb/api/booking-by-face/:personId'], async (req, res) => {
     try {
         const personId = req.params.personId;
         if (!personId) {
