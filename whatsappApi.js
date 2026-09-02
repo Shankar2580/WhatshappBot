@@ -116,6 +116,7 @@ async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken, f
         });
     } catch (error) {
         console.error('Error sending flow message:', error?.response?.data || error.message);
+        throw error;
     }
 }
 

@@ -42,11 +42,12 @@ const translations = {
         duplicate_booking: '⚠️ Our records indicate you already have a confirmed booking for this exact date and time slot.',
         booking_success: '🔱 Har Har Mahadev!\nYour booking is now officially confirmed. Thank you for placing your trust in the divine blessings of Mahakaleshwar Temple, Ujjain. Your Official Booking PDF Pass is attached below. May Lord Mahakal remove every obstacle from your path and fill your life with happiness and strength. 🙏',
         pdf_caption: '🙏 *Official Darshan Pass Attached*\n\nPlease download and preserve this PDF pass for entry at Shri Mahakaleshwar Temple gate.',
-        booking_cancelled: '🚫 *Booking Cancelled*\n\nYour booking process has been safely cancelled. Send "book" whenever you are ready to start again.',
-        invalid_confirm: '⚠️ Please tap Yes or No to confirm your selection.',
+        booking_cancelled: 'Booking cancelled. Send "book" to start again.',
+        invalid_confirm: 'Please tap Yes or No to confirm.',
+        cancelled: 'Booking process cancelled. Send "book" to start over.',
         btn_pay_now: '💳 Pay Now',
-        payment_pending: (amount, link) => `💳 *Payment Required*\n\nTo secure your booking, please complete the payment of *₹${amount}* via Razorpay by tapping the Pay Now button below or clicking this link:\n\n🔗 ${link}\n\nOnce the payment is successful, your booking will be instantly confirmed and your PDF pass will be sent here automatically.`,
-        payment_pending_body: (amount) => `💳 *Payment Required*\n\nTo secure your sacred booking, please complete the payment of *₹${amount}* via Razorpay.\n\nTap *Pay Now* below to complete payment securely.`
+        payment_pending: (amount, link) => `💳 *Payment Required*\n\nTo secure your booking, please complete the payment of *₹${amount}* via Razorpay by clicking the link below:\n\n🔗 ${link}\n\nOnce the payment is successful, your booking will be instantly confirmed and your PDF pass will be sent here automatically.`,
+        payment_pending_body: (amount) => `💳 *Payment Required*\n\nTo secure your booking, please complete the payment of *₹${amount}* via Razorpay.`
     },
     hi: {
         welcome: '🙏 *श्री महाकालेश्वर आधिकारिक बुकिंग पोर्टल में आपका स्वागत है* ✨\n\nएक सहज और दिव्य बुकिंग यात्रा का अनुभव करें। आरंभ करने के लिए, कृपया अपनी पसंदीदा भाषा चुनें:',
@@ -91,12 +92,12 @@ const translations = {
         duplicate_booking: '⚠️ हमारे रिकॉर्ड बताते हैं कि आपके पास इस सटीक तिथि और समय स्लॉट के लिए पहले से ही एक पुष्ट बुकिंग है।',
         booking_success: '🔱 हर हर महादेव!\nआपकी बुकिंग अब आधिकारिक तौर पर पुष्ट हो गई है। उज्जैन के महाकालेश्वर मंदिर के दिव्य आशीर्वाद में अपना विश्वास रखने के लिए धन्यवाद। आपका आधिकारिक बुकिंग पीडीएफ पास नीचे संलग्न है। भगवान महाकाल आपके मार्ग से हर बाधा को दूर करें और आपके जीवन को खुशी और शक्ति से भर दें। 🙏',
         pdf_caption: '🙏 *आधिकारिक दर्शन पास संलग्न*\n\nश्री महाकालेश्वर मंदिर द्वार पर प्रवेश के लिए कृपया इस पीडीएफ पास को डाउनलोड करें और सुरक्षित रखें।',
-        booking_cancelled: '🚫 *बुकिंग रद्द*\n\nआपकी बुकिंग प्रक्रिया सुरक्षित रूप से रद्द कर दी गई है। जब भी आप फिर से शुरू करने के लिए तैयार हों, "book" भेजें।',
-        invalid_confirm: '⚠️ कृपया अपने चयन की पुष्टि करने के लिए हाँ या नहीं पर टैप करें।',
-        cancelled: '🚫 *प्रक्रिया समाप्त*\n\nबुकिंग प्रक्रिया रद्द कर दी गई है। फिर से शुरू करने के लिए "book" भेजें।',
+        booking_cancelled: 'बुकिंग रद्द कर दी गई। फिर से शुरू करने के लिए "book" भेजें।',
+        invalid_confirm: 'कृपया पुष्टि करने के लिए हाँ या नहीं पर टैप करें।',
+        cancelled: 'बुकिंग प्रक्रिया रद्द कर दी गई। फिर से शुरू करने के लिए "book" भेजें।',
         btn_pay_now: '💳 भुगतान करें',
         payment_pending: (amount, link) => `💳 *भुगतान आवश्यक*\n\nअपनी बुकिंग सुरक्षित करने के लिए, कृपया नीचे दिए गए लिंक पर क्लिक करके रेजरपे (Razorpay) के माध्यम से *₹${amount}* का भुगतान पूरा करें:\n\n🔗 ${link}\n\nभुगतान सफल होने के बाद, आपकी बुकिंग तुरंत पक्की हो जाएगी और आपका पीडीएफ पास स्वचालित रूप से यहां भेज दिया जाएगा।`,
-        payment_pending_body: (amount) => `💳 *भुगतान आवश्यक*\n\nअपनी दिव्य बुकिंग सुरक्षित करने के लिए, कृपया रेज़रपे के माध्यम से *₹${amount}* का भुगतान पूरा करें।\n\nसुरक्षित भुगतान के लिए नीचे *भुगतान करें* बटन पर टैप करें।`
+        payment_pending_body: (amount) => `💳 *भुगतान आवश्यक*\n\nअपनी दिव्य बुकिंग सुरक्षित करने के लिए, कृपया रेज़रपे के माध्यम से *₹${amount}* का भुगतान पूरा करें।`
     }
 };
 
