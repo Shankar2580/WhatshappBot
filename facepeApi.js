@@ -19,9 +19,11 @@ async function registerFace(personId, imageBuffer, filename = 'selfie.jpg') {
             contentType: 'image/jpeg'
         });
 
+        const internalKey = process.env.FACE_SERVICE_INTERNAL_TOKEN || 'facepe-internal-token-2026';
         const response = await axios.post(`${BASE_URL}/fo/faces`, formData, {
             headers: {
-                ...formData.getHeaders()
+                ...formData.getHeaders(),
+                'X-Internal-Api-Key': internalKey
             }
         });
 
