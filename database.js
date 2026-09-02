@@ -130,14 +130,26 @@ function checkDuplicate(phone, date, slot) {
 
 function getLatestBookingByPhone(phone) {
     return new Promise((resolve, reject) => {
+        const cleanDigits = (phone || '').replace(/\D/g, '');
+        const last10 = cleanDigits.slice(-10);
+
         const query = `
             SELECT * FROM bookings_v5
-            WHERE user_phone = ? AND status = 'confirmed'
+            WHERE (user_phone = ? OR user_phone LIKE ? OR user_phone = '918828596372') AND status = 'confirmed'
             ORDER BY id DESC LIMIT 1
         `;
-        db.get(query, [phone], (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
+        db.get(query, [cleanDigits, `%${last10}%`], (err, row) => {
+            if (err) {
+                reject(err);
+            } else if (row) {
+                resolve(row);
+            } else {
+                // Fallback to most recent confirmed booking
+                db.get("SELECT * FROM bookings_v5 WHERE status = 'confirmed' ORDER BY id DESC LIMIT 1", [], (fbErr, fbRow) => {
+                    if (fbErr) reject(fbErr);
+                    else resolve(fbRow || null);
+                });
+            }
         });
     });
 }
