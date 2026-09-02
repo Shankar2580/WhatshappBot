@@ -588,12 +588,17 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                         primaryGuestName
                     );
 
-                    // Send payment link to user
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, paymentLink));
+                    // Send interactive CTA URL button to user (with clickable link fallback)
+                    await whatsappApi.sendCtaUrlButton(
+                        phone,
+                        t(lang, 'payment_pending_body', totalPrice),
+                        t(lang, 'btn_pay_now'),
+                        paymentLink
+                    );
                 } catch (payErr) {
                     console.error('[Razorpay] Failed to generate payment link, fallback to mock link:', payErr);
                     // Fallback mock link for testing/resilience
-                    const mockLink = `https://checkout.razorpay.com/v1/checkout.html?mock_booking_ref=${bookingRef}&mock_amount=${totalPrice}`;
+                    const mockLink = `https://chat.facepe.ai/mock-payment?ref=${bookingRef}&amount=${totalPrice}`;
                     await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, mockLink));
                 }
 

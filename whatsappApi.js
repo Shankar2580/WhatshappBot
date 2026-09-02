@@ -197,6 +197,40 @@ async function sendImageMessage(phone, mediaId, caption) {
     }
 }
 
+async function sendCtaUrlButton(phone, bodyText, buttonText, url) {
+    try {
+        await api.post(BASE_URL, {
+            messaging_product: 'whatsapp',
+            to: phone,
+            type: 'interactive',
+            interactive: {
+                type: 'cta_url',
+                header: {
+                    type: 'text',
+                    text: '॥ श्री महाकालेश्वर दर्शन ॥'
+                },
+                body: {
+                    text: bodyText
+                },
+                footer: {
+                    text: 'Razorpay Secure Payment 🔒'
+                },
+                action: {
+                    name: 'cta_url',
+                    parameters: {
+                        display_text: (buttonText || 'Pay Now').substring(0, 20),
+                        url: url
+                    }
+                }
+            }
+        });
+        console.log(`[WhatsApp] Sent CTA URL button to ${phone}`);
+    } catch (error) {
+        console.warn('[WhatsApp] CTA URL button failed, falling back to text message:', error?.response?.data || error.message);
+        await sendTextMessage(phone, `${bodyText}\n\n🔗 ${url}`);
+    }
+}
+
 module.exports = {
     sendTextMessage,
     sendSlotButtons,
@@ -204,6 +238,7 @@ module.exports = {
     sendInteractiveButtons,
     sendListMessage,
     sendFlowMessage,
+    sendCtaUrlButton,
     uploadMedia,
     sendDocumentMessage,
     downloadMediaBuffer,
