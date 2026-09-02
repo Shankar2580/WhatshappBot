@@ -464,8 +464,9 @@ app.get(['/checkout', '/wb/checkout'], async (req, res) => {
                         document.getElementById('payBtn').innerText = '⏳ पुष्टि की जा रही है...';
                         document.getElementById('payBtn').disabled = true;
 
+                        const prefix = window.location.pathname.startsWith('/wb') ? '/wb' : '';
                         try {
-                            const res = await fetch('/api/confirm-payment', {
+                            const res = await fetch(prefix + '/api/confirm-payment', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
@@ -478,14 +479,14 @@ app.get(['/checkout', '/wb/checkout'], async (req, res) => {
                             });
 
                             if (res.ok) {
-                                window.location.href = '/payment-success?ref=${bookingRef}';
+                                window.location.href = prefix + '/payment-success?ref=${bookingRef}';
                             } else {
                                 alert('भुगतान सत्यापन विफल रहा। कृपया पुनः प्रयास करें।');
                                 document.getElementById('payBtn').innerText = '💳 पुनः प्रयास करें';
                                 document.getElementById('payBtn').disabled = false;
                             }
                         } catch (err) {
-                            window.location.href = '/payment-success?ref=${bookingRef}';
+                            window.location.href = prefix + '/payment-success?ref=${bookingRef}';
                         }
                     },
                     modal: {
@@ -496,9 +497,9 @@ app.get(['/checkout', '/wb/checkout'], async (req, res) => {
                 };
 
                 function openRazorpay() {
+                    const prefix = window.location.pathname.startsWith('/wb') ? '/wb' : '';
                     if (!options.key) {
-                        // If no key in test mode, redirect to mock payment
-                        window.location.href = '/mock-payment?ref=${bookingRef}&amount=${totalAmount}&action=pay';
+                        window.location.href = prefix + '/mock-payment?ref=${bookingRef}&amount=${totalAmount}&action=pay';
                         return;
                     }
                     const rzp = new Razorpay(options);

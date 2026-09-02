@@ -596,10 +596,10 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
                         paymentLink
                     );
                 } catch (payErr) {
-                    console.error('[Razorpay] Failed to generate payment link, fallback to mock link:', payErr);
-                    // Fallback mock link for testing/resilience
-                    const mockLink = `https://chat.facepe.ai/mock-payment?ref=${bookingRef}&amount=${totalPrice}`;
-                    await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, mockLink));
+                    console.error('[Razorpay] Failed to generate payment link, fallback to hosted checkout:', payErr);
+                    const baseUrl = process.env.APP_BASE_URL || 'https://api.dev.facepe.ai/wb';
+                    const fallbackLink = `${baseUrl}/checkout?ref=${bookingRef}`;
+                    await whatsappApi.sendTextMessage(phone, t(lang, 'payment_pending', totalPrice, fallbackLink));
                 }
 
                 // Clear user state immediately (the webhook will handle ticket delivery upon payment)

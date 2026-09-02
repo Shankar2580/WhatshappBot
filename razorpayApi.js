@@ -98,9 +98,10 @@ function verifyPaymentSignature(orderId, paymentId, signature) {
 async function createPaymentLink(bookingRef, amountPaise, phone, aartiName, guestName = 'Devotee') {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const baseUrl = process.env.APP_BASE_URL || 'https://api.dev.facepe.ai/wb';
 
-    // In test mode or when links hit rate limits, hosted checkout on chat.facepe.ai is the primary link
-    const hostedCheckoutUrl = `https://chat.facepe.ai/checkout?ref=${bookingRef}`;
+    // In test mode or when links hit rate limits, hosted checkout on api.dev.facepe.ai/wb is the primary link
+    const hostedCheckoutUrl = `${baseUrl}/checkout?ref=${bookingRef}`;
 
     if (!keyId || !keySecret) {
         return hostedCheckoutUrl;
@@ -129,7 +130,7 @@ async function createPaymentLink(bookingRef, amountPaise, phone, aartiName, gues
                 booking_ref: bookingRef,
                 user_phone: phone
             },
-            callback_url: `https://chat.facepe.ai/payment-success?ref=${bookingRef}`,
+            callback_url: `${baseUrl}/payment-success?ref=${bookingRef}`,
             callback_method: 'get'
         };
 
