@@ -572,16 +572,11 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
     else if (aarti === 'Shayan Aarti') slot = '10:30 PM - 11:00 PM';
     else if (aarti === 'Shighra Darshan') slot = '09:00 AM - 12:00 PM';
 
-    const count = parseInt(num_people, 10) || 1;
-    const cleanDate = (booking_date || '').replace(/\D/g, '');
-    const randomId = Math.floor(1000 + Math.random() * 9000);
-    const bookingRef = `MAHAKAL-${cleanDate || '2026'}-${randomId}`;
-
     const normalizedIdType = (id_type || 'Aadhaar').toLowerCase().includes('passport') ? 'passport' : 'aadhaar';
 
     const guestsList = [
         {
-            kyc_verified_name: devotee_name || 'Primary Devotee',
+            kyc_verified_name: (devotee_name || 'Primary Devotee').trim(),
             id_type: normalizedIdType,
             aadhaar: normalizedIdType === 'aadhaar' ? (id_number || 'Verified') : 'Verified',
             passport_number: normalizedIdType === 'passport' ? (id_number || 'Verified') : 'Verified',
@@ -590,9 +585,9 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
         }
     ];
 
-    if (count >= 2 && devotee_name_2) {
+    if (devotee_name_2 && devotee_name_2.trim()) {
         guestsList.push({
-            kyc_verified_name: devotee_name_2,
+            kyc_verified_name: devotee_name_2.trim(),
             id_type: 'companion',
             aadhaar: 'Accompanying',
             passport_number: 'Accompanying',
@@ -600,9 +595,9 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
             dob: 'N/A'
         });
     }
-    if (count >= 3 && devotee_name_3) {
+    if (devotee_name_3 && devotee_name_3.trim()) {
         guestsList.push({
-            kyc_verified_name: devotee_name_3,
+            kyc_verified_name: devotee_name_3.trim(),
             id_type: 'companion',
             aadhaar: 'Accompanying',
             passport_number: 'Accompanying',
@@ -610,9 +605,9 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
             dob: 'N/A'
         });
     }
-    if (count >= 4 && devotee_name_4) {
+    if (devotee_name_4 && devotee_name_4.trim()) {
         guestsList.push({
-            kyc_verified_name: devotee_name_4,
+            kyc_verified_name: devotee_name_4.trim(),
             id_type: 'companion',
             aadhaar: 'Accompanying',
             passport_number: 'Accompanying',
@@ -620,6 +615,11 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
             dob: 'N/A'
         });
     }
+
+    const count = flowData.num_people ? parseInt(flowData.num_people, 10) : guestsList.length;
+    const cleanDate = (booking_date || '').replace(/\D/g, '');
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    const bookingRef = `MAHAKAL-${cleanDate || '2026'}-${randomId}`;
 
     const aartiPrices = {
         'Bhasma Aarti': 200,

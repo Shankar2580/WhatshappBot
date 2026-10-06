@@ -63,30 +63,6 @@
             "max-date": "${data.max_date}"
           },
           {
-            "type": "Dropdown",
-            "name": "num_people",
-            "label": "Total Devotees",
-            "required": true,
-            "data-source": [
-              {
-                "id": "1",
-                "title": "1 Devotee"
-              },
-              {
-                "id": "2",
-                "title": "2 Devotees"
-              },
-              {
-                "id": "3",
-                "title": "3 Devotees"
-              },
-              {
-                "id": "4",
-                "title": "4 Devotees"
-              }
-            ]
-          },
-          {
             "type": "TextInput",
             "name": "devotee_name",
             "label": "Devotee 1 Name",
@@ -145,7 +121,6 @@
               "payload": {
                 "aarti_type": "${form.aarti_type}",
                 "booking_date": "${form.booking_date}",
-                "num_people": "${form.num_people}",
                 "devotee_name": "${form.devotee_name}",
                 "devotee_name_2": "${form.devotee_name_2}",
                 "devotee_name_3": "${form.devotee_name_3}",
