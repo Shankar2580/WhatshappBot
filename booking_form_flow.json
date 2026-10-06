@@ -98,21 +98,21 @@
             "name": "devotee_name_2",
             "label": "Devotee 2 Name",
             "input-type": "text",
-            "visible": "${form.num_people == '2' || form.num_people == '3' || form.num_people == '4'}"
+            "required": false
           },
           {
             "type": "TextInput",
             "name": "devotee_name_3",
             "label": "Devotee 3 Name",
             "input-type": "text",
-            "visible": "${form.num_people == '3' || form.num_people == '4'}"
+            "required": false
           },
           {
             "type": "TextInput",
             "name": "devotee_name_4",
             "label": "Devotee 4 Name",
             "input-type": "text",
-            "visible": "${form.num_people == '4'}"
+            "required": false
           },
           {
             "type": "Dropdown",
