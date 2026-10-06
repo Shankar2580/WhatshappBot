@@ -33,7 +33,7 @@
           {
             "type": "Dropdown",
             "name": "aarti_type",
-            "label": "Select Darshan / Aarti",
+            "label": "Darshan / Aarti",
             "required": true,
             "data-source": [
               {
@@ -57,7 +57,7 @@
           {
             "type": "DatePicker",
             "name": "booking_date",
-            "label": "Select Darshan Date",
+            "label": "Darshan Date",
             "required": true,
             "min-date": "${data.min_date}",
             "max-date": "${data.max_date}"
@@ -65,7 +65,7 @@
           {
             "type": "Dropdown",
             "name": "num_people",
-            "label": "Number of Devotees",
+            "label": "Total Devotees",
             "required": true,
             "data-source": [
               {
@@ -89,14 +89,14 @@
           {
             "type": "TextInput",
             "name": "devotee_name",
-            "label": "Primary Devotee Full Name",
+            "label": "Devotee Full Name",
             "input-type": "text",
             "required": true
           },
           {
             "type": "Dropdown",
             "name": "id_type",
-            "label": "Government ID Proof Type",
+            "label": "Select ID Type",
             "required": true,
             "data-source": [
               {
@@ -116,7 +116,7 @@
           {
             "type": "TextInput",
             "name": "id_number",
-            "label": "Document / ID Number",
+            "label": "Document Number",
             "input-type": "text",
             "required": true
           },
