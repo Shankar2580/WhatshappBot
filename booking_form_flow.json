@@ -1,0 +1,142 @@
+{
+  "version": "7.3",
+  "screens": [
+    {
+      "id": "BOOKING_FORM_SCREEN",
+      "title": "Mahakal Booking Form",
+      "terminal": true,
+      "data": {
+        "min_date": {
+          "type": "string",
+          "__example__": "2026-10-07"
+        },
+        "max_date": {
+          "type": "string",
+          "__example__": "2026-11-06"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "🔱 Shri Mahakaleshwar Temple"
+          },
+          {
+            "type": "TextSubheading",
+            "text": "Official Darshan & Aarti Registration"
+          },
+          {
+            "type": "TextBody",
+            "text": "Please provide your details below. Your official pass will be delivered directly to this WhatsApp chat."
+          },
+          {
+            "type": "Dropdown",
+            "name": "aarti_type",
+            "label": "Select Darshan / Aarti",
+            "required": true,
+            "data-source": [
+              {
+                "id": "Bhasma Aarti",
+                "title": "Bhasma Aarti (04:00 AM - 06:00 AM)"
+              },
+              {
+                "id": "Shighra Darshan",
+                "title": "Shighra Darshan (Priority Entry)"
+              },
+              {
+                "id": "Sandhya Aarti",
+                "title": "Sandhya Aarti (05:30 PM - 07:00 PM)"
+              },
+              {
+                "id": "Shayan Aarti",
+                "title": "Shayan Aarti (10:30 PM - 11:00 PM)"
+              }
+            ]
+          },
+          {
+            "type": "DatePicker",
+            "name": "booking_date",
+            "label": "Select Darshan Date",
+            "required": true,
+            "min-date": "${data.min_date}",
+            "max-date": "${data.max_date}"
+          },
+          {
+            "type": "Dropdown",
+            "name": "num_people",
+            "label": "Number of Devotees",
+            "required": true,
+            "data-source": [
+              {
+                "id": "1",
+                "title": "1 Devotee"
+              },
+              {
+                "id": "2",
+                "title": "2 Devotees"
+              },
+              {
+                "id": "3",
+                "title": "3 Devotees"
+              },
+              {
+                "id": "4",
+                "title": "4 Devotees"
+              }
+            ]
+          },
+          {
+            "type": "TextInput",
+            "name": "devotee_name",
+            "label": "Primary Devotee Full Name",
+            "input-type": "text",
+            "required": true
+          },
+          {
+            "type": "Dropdown",
+            "name": "id_type",
+            "label": "Government ID Proof Type",
+            "required": true,
+            "data-source": [
+              {
+                "id": "Aadhaar Card",
+                "title": "Aadhaar Card"
+              },
+              {
+                "id": "Passport",
+                "title": "International Passport"
+              },
+              {
+                "id": "Voter ID",
+                "title": "Voter ID Card"
+              }
+            ]
+          },
+          {
+            "type": "TextInput",
+            "name": "id_number",
+            "label": "Document / ID Number",
+            "input-type": "text",
+            "required": true
+          },
+          {
+            "type": "Footer",
+            "label": "Submit Booking",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {
+                "aarti_type": "${form.aarti_type}",
+                "booking_date": "${form.booking_date}",
+                "num_people": "${form.num_people}",
+                "devotee_name": "${form.devotee_name}",
+                "id_type": "${form.id_type}",
+                "id_number": "${form.id_number}"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -89,31 +89,40 @@ async function sendConfirmationButtons(phone, bodyText, btnYesLabel, btnNoLabel)
     await sendInteractiveButtons(phone, bodyText, buttons);
 }
 
-async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken, flowData = {}) {
+async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken = 'FLOW_TOKEN_123', flowData = {}, screen = 'BOOKING_FORM_SCREEN', headerText = '॥ श्री महाकालेश्वर दर्शन ॥') {
     try {
+        const interactivePayload = {
+            type: 'flow',
+            header: headerText ? { type: 'text', text: headerText } : undefined,
+            body: { text: bodyText },
+            footer: { text: 'Shri Mahakaleshwar Temple' },
+            action: {
+                name: 'flow',
+                parameters: {
+                    flow_message_version: '3',
+                    flow_token: flowToken,
+                    flow_id: flowId,
+                    flow_cta: buttonText,
+                    flow_action: 'navigate',
+                    flow_action_payload: {
+                        screen: screen,
+                        data: flowData
+                    }
+                }
+            }
+        };
+
+        if (!headerText) {
+            delete interactivePayload.header;
+        }
+
         await api.post(BASE_URL, {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'interactive',
-            interactive: {
-                type: 'flow',
-                body: { text: bodyText },
-                action: {
-                    name: 'flow',
-                    parameters: {
-                        flow_message_version: '3',
-                        flow_token: flowToken,
-                        flow_id: flowId,
-                        flow_cta: buttonText,
-                        flow_action: 'navigate',
-                        flow_action_payload: {
-                            screen: 'date_selection_screen',
-                            data: flowData
-                        }
-                    }
-                }
-            }
+            interactive: interactivePayload
         });
+        console.log(`[WhatsApp Flow] Successfully sent flow ${flowId} (screen: ${screen}) to ${phone}`);
     } catch (error) {
         console.error('Error sending flow message:', error?.response?.data || error.message);
         throw error;

@@ -186,7 +186,7 @@ function confirmBookingPayment(bookingRef, paymentId, amountPaid) {
         const query = `
             UPDATE bookings_v5
             SET status = 'confirmed', payment_id = ?, amount_paid = ?
-            WHERE booking_ref = ?
+            WHERE booking_ref = ? AND status = 'pending_payment'
         `;
         db.run(query, [paymentId, amountPaid, bookingRef], function(err) {
             if (err) reject(err);

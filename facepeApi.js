@@ -20,10 +20,12 @@ async function registerFace(personId, imageBuffer, filename = 'selfie.jpg') {
         });
 
         const internalKey = process.env.FACE_SERVICE_INTERNAL_TOKEN || 'facepe-internal-token-2026';
+        const faceIndex = process.env.FACE_INDEX || 'fpv_whatsapp_faces';
         const response = await axios.post(`${BASE_URL}/fo/faces`, formData, {
             headers: {
                 ...formData.getHeaders(),
-                'X-Internal-Api-Key': internalKey
+                'X-Internal-Api-Key': internalKey,
+                'X-Face-Index': faceIndex
             }
         });
 
