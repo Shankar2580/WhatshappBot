@@ -89,9 +89,30 @@
           {
             "type": "TextInput",
             "name": "devotee_name",
-            "label": "Devotee Full Name",
+            "label": "Devotee 1 Name",
             "input-type": "text",
             "required": true
+          },
+          {
+            "type": "TextInput",
+            "name": "devotee_name_2",
+            "label": "Devotee 2 Name",
+            "input-type": "text",
+            "visible": "${form.num_people == '2' || form.num_people == '3' || form.num_people == '4'}"
+          },
+          {
+            "type": "TextInput",
+            "name": "devotee_name_3",
+            "label": "Devotee 3 Name",
+            "input-type": "text",
+            "visible": "${form.num_people == '3' || form.num_people == '4'}"
+          },
+          {
+            "type": "TextInput",
+            "name": "devotee_name_4",
+            "label": "Devotee 4 Name",
+            "input-type": "text",
+            "visible": "${form.num_people == '4'}"
           },
           {
             "type": "Dropdown",
@@ -105,11 +126,7 @@
               },
               {
                 "id": "Passport",
-                "title": "International Passport"
-              },
-              {
-                "id": "Voter ID",
-                "title": "Voter ID Card"
+                "title": "Passport"
               }
             ]
           },
@@ -130,6 +147,9 @@
                 "booking_date": "${form.booking_date}",
                 "num_people": "${form.num_people}",
                 "devotee_name": "${form.devotee_name}",
+                "devotee_name_2": "${form.devotee_name_2}",
+                "devotee_name_3": "${form.devotee_name_3}",
+                "devotee_name_4": "${form.devotee_name_4}",
                 "id_type": "${form.id_type}",
                 "id_number": "${form.id_number}"
               }

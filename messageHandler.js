@@ -558,7 +558,7 @@ async function sendBookingFlow(phone, lang = 'hi') {
 }
 
 async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
-    let { aarti_type, booking_date, num_people, devotee_name, id_type, id_number } = flowData;
+    let { aarti_type, booking_date, num_people, devotee_name, devotee_name_2, devotee_name_3, devotee_name_4, id_type, id_number } = flowData;
 
     // Standardize YYYY-MM-DD from flow datepicker to DD/MM/YYYY
     if (booking_date && /^\d{4}-\d{2}-\d{2}$/.test(booking_date)) {
@@ -577,14 +577,49 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
     const randomId = Math.floor(1000 + Math.random() * 9000);
     const bookingRef = `MAHAKAL-${cleanDate || '2026'}-${randomId}`;
 
-    const guestObj = {
-        kyc_verified_name: devotee_name || 'Devotee',
-        id_type: (id_type || 'Aadhaar').toLowerCase().includes('passport') ? 'passport' : 'aadhaar',
-        aadhaar: id_number || 'Verified',
-        passport_number: id_number || 'Verified',
-        gender: 'Verified',
-        dob: 'N/A'
-    };
+    const normalizedIdType = (id_type || 'Aadhaar').toLowerCase().includes('passport') ? 'passport' : 'aadhaar';
+
+    const guestsList = [
+        {
+            kyc_verified_name: devotee_name || 'Primary Devotee',
+            id_type: normalizedIdType,
+            aadhaar: normalizedIdType === 'aadhaar' ? (id_number || 'Verified') : 'Verified',
+            passport_number: normalizedIdType === 'passport' ? (id_number || 'Verified') : 'Verified',
+            gender: 'Verified',
+            dob: 'N/A'
+        }
+    ];
+
+    if (count >= 2 && devotee_name_2) {
+        guestsList.push({
+            kyc_verified_name: devotee_name_2,
+            id_type: 'companion',
+            aadhaar: 'Accompanying',
+            passport_number: 'Accompanying',
+            gender: 'Verified',
+            dob: 'N/A'
+        });
+    }
+    if (count >= 3 && devotee_name_3) {
+        guestsList.push({
+            kyc_verified_name: devotee_name_3,
+            id_type: 'companion',
+            aadhaar: 'Accompanying',
+            passport_number: 'Accompanying',
+            gender: 'Verified',
+            dob: 'N/A'
+        });
+    }
+    if (count >= 4 && devotee_name_4) {
+        guestsList.push({
+            kyc_verified_name: devotee_name_4,
+            id_type: 'companion',
+            aadhaar: 'Accompanying',
+            passport_number: 'Accompanying',
+            gender: 'Verified',
+            dob: 'N/A'
+        });
+    }
 
     const aartiPrices = {
         'Bhasma Aarti': 200,
@@ -609,7 +644,7 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
         language: lang,
         aarti_type: aarti,
         num_people: count,
-        guests_data: JSON.stringify([guestObj]),
+        guests_data: JSON.stringify(guestsList),
         photo_id: '',
         booking_date: booking_date,
         slot_time: slot,
@@ -617,9 +652,10 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
     });
 
     // Notify devotee immediately
+    const devoteeNamesText = guestsList.map(g => g.kyc_verified_name).join(', ');
     const confirmText = lang === 'hi'
-        ? `🔱 *हर हर महादेव!*\n\nआपका फॉर्म सफलतापूर्वक प्राप्त हो गया है:\n• *मुख्य भक्त:* ${devotee_name}\n• *सेवा:* ${aarti}\n• *दर्शन तिथि:* ${booking_date}\n• *समय स्लॉट:* ${slot}\n• *कुल भक्त:* ${count} व्यक्ति\n• *बुकिंग संदर्भ:* *${bookingRef}*\n\n📄 आपका आधिकारिक डिजिटल पास तैयार किया जा रहा है...`
-        : `🔱 *Har Har Mahadev!*\n\nYour booking form has been received successfully:\n• *Devotee:* ${devotee_name}\n• *Service:* ${aarti}\n• *Date:* ${booking_date}\n• *Slot:* ${slot}\n• *Devotees:* ${count} Person(s)\n• *Booking Ref:* *${bookingRef}*\n\n📄 Generating your official digital Darshan pass now...`;
+        ? `🔱 *हर हर महादेव!*\n\nआपका फॉर्म सफलतापूर्वक प्राप्त हो गया है:\n• *भक्तगण:* ${devoteeNamesText}\n• *सेवा:* ${aarti}\n• *दर्शन तिथि:* ${booking_date}\n• *समय स्लॉट:* ${slot}\n• *कुल भक्त:* ${count} व्यक्ति\n• *बुकिंग संदर्भ:* *${bookingRef}*\n\n📄 आपका आधिकारिक डिजिटल पास तैयार किया जा रहा है...`
+        : `🔱 *Har Har Mahadev!*\n\nYour booking form has been received successfully:\n• *Devotee(s):* ${devoteeNamesText}\n• *Service:* ${aarti}\n• *Date:* ${booking_date}\n• *Slot:* ${slot}\n• *Devotees:* ${count} Person(s)\n• *Booking Ref:* *${bookingRef}*\n\n📄 Generating your official digital Darshan pass now...`;
     
     await whatsappApi.sendTextMessage(phone, confirmText);
 
@@ -638,7 +674,7 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
             booking_date: booking_date,
             slot_time: slot,
             num_people: count,
-            guests: [guestObj],
+            guests: guestsList,
             payment_id: 'PASS_CONFIRMED',
             amount_paid: totalPrice,
             selfie_path: null
