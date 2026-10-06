@@ -431,45 +431,13 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     }
 
     if (state === STATES.ASK_PHOTO) {
-        if (imagePayload) {
-            await whatsappApi.sendTextMessage(phone, "Processing photo, please wait...");
-            try {
-                const imageBuffer = await whatsappApi.downloadMediaBuffer(imagePayload);
-                const data = stateManager.getTempData(phone);
-
-                // Construct a unique person_id matching the primary guest's details
-                const primaryGuestName = (data.guests[0]?.kyc_verified_name || 'Guest').replace(/[^a-zA-Z0-9]/g, '_');
-                const personId = `${phone}_${primaryGuestName}`;
-
-                // Register face embedding in FacePe backend
-                const regRes = await facepeApi.registerFace(personId, imageBuffer);
-                console.log('Face registered successfully on FacePe:', regRes);
-
-                stateManager.setTempData(phone, { photoId: imagePayload });
-                stateManager.setState(phone, STATES.CONFIRM);
-
-                const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
-                const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
-                await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
-            } catch (err) {
-                console.error('FacePe registration error:', err);
-                const errMsg = err?.response?.data?.detail || err.message || '';
-                if (errMsg.includes('no face detected')) {
-                    await whatsappApi.sendTextMessage(phone, "No face detected in the photo. Please send a clear, solo selfie of the primary devotee.");
-                } else {
-                    // Connection error fallback: Proceed to confirm booking anyway to prevent lockouts
-                    console.log("Proceeding with confirmation due to FacePe service error.");
-                    stateManager.setTempData(phone, { photoId: imagePayload });
-                    stateManager.setState(phone, STATES.CONFIRM);
-                    const data = stateManager.getTempData(phone);
-                    const namesStr = data.guests.map(g => g.kyc_verified_name || g.entered_name || 'Devotee').join(', ');
-                    const confirmMsg = t(lang, 'confirm_booking', data.aarti, data.date, data.slot, data.numPeople, namesStr);
-                    await whatsappApi.sendConfirmationButtons(phone, confirmMsg, t(lang, 'btn_yes'), t(lang, 'btn_no'));
-                }
-            }
-        } else {
-            await whatsappApi.sendTextMessage(phone, t(lang, 'invalid_photo'));
-        }
+        stateManager.clearUser(phone);
+        await whatsappApi.sendTextMessage(
+            phone,
+            lang === 'hi'
+                ? `🙏 आपका पास पहले ही जारी हो चुका है। दर्शन हेतु श्री महाकालेश्वर मंदिर में आपका स्वागत है!\n\n(नया पास बुक करने के लिए 'book' या 'hi' भेजें)`
+                : `🙏 Your pass is already confirmed and delivered above. Welcome to Shri Mahakaleshwar Temple!\n\n(Send 'book' or 'hi' to start a new booking)`
+        );
         return;
     }
 
@@ -679,14 +647,13 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
         const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
         await whatsappApi.sendDocumentMessage(phone, mediaId, `${bookingRef}.pdf`, t(lang, 'pdf_caption'));
 
-        // Prompt for biometric selfie if desired
-        stateManager.setTempData(phone, { bookingRef, currentBooking: bookingRef });
-        stateManager.setState(phone, STATES.ASK_PHOTO);
+        // Booking is completely finished. Clear session and send blessing message.
+        stateManager.clearUser(phone);
         await whatsappApi.sendTextMessage(
             phone,
             lang === 'hi'
-                ? `📸 *चेहरा सत्यापन (वैकल्पिक)*\n\nयदि आप गेट नंबर 4 पर संपर्क रहित (contactless) ऑटोमैटिक टर्नस्टाइल प्रवेश चाहते हैं, तो कृपया अपनी एक स्पष्ट सेल्फी फोटो भेजें।`
-                : `📸 *Facial Turnstile Access (Optional)*\n\nFor hands-free contactless entry at Gate No. 4 turnstile gates, please reply with a clear solo selfie.`
+                ? `🙏 *श्री महाकालेश्वर दर्शन हेतु आपका स्वागत है!*\n\nआपका आधिकारिक डिजिटल पास ऊपर भेज दिया गया है। प्रवेश द्वार पर पीडीएफ में दिया गया क्यूआर कोड दिखाएं।\n\n(नई बुकिंग के लिए कभी भी 'book' या 'hi' भेजें)`
+                : `🙏 *Har Har Mahadev!*\n\nYour official digital pass has been delivered above. Please present the QR code on the PDF pass at the temple entry gate.\n\n(Send 'book' or 'hi' anytime to book again)`
         );
     } catch (pdfErr) {
         console.error('[WhatsApp Flow] Error generating or sending PDF pass:', pdfErr);
