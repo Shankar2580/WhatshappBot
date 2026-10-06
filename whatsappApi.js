@@ -90,7 +90,22 @@ async function sendConfirmationButtons(phone, bodyText, btnYesLabel, btnNoLabel)
 }
 
 async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken = 'FLOW_TOKEN_123', flowData = {}, screen = 'BOOKING_FORM_SCREEN', headerText = '॥ श्री महाकालेश्वर दर्शन ॥') {
-    try {
+    const buildPayload = (mode) => {
+        const params = {
+            flow_message_version: '3',
+            flow_token: flowToken,
+            flow_id: String(flowId),
+            flow_cta: (buttonText || 'Book Pass').substring(0, 20),
+            flow_action: 'navigate',
+            flow_action_payload: {
+                screen: screen,
+                data: flowData
+            }
+        };
+        if (mode) {
+            params.mode = mode;
+        }
+
         const interactivePayload = {
             type: 'flow',
             header: headerText ? { type: 'text', text: headerText } : undefined,
@@ -98,17 +113,7 @@ async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken = 
             footer: { text: 'Shri Mahakaleshwar Temple' },
             action: {
                 name: 'flow',
-                parameters: {
-                    flow_message_version: '3',
-                    flow_token: flowToken,
-                    flow_id: flowId,
-                    flow_cta: buttonText,
-                    flow_action: 'navigate',
-                    flow_action_payload: {
-                        screen: screen,
-                        data: flowData
-                    }
-                }
+                parameters: params
             }
         };
 
@@ -116,15 +121,33 @@ async function sendFlowMessage(phone, bodyText, buttonText, flowId, flowToken = 
             delete interactivePayload.header;
         }
 
-        await api.post(BASE_URL, {
+        return {
             messaging_product: 'whatsapp',
             to: phone,
             type: 'interactive',
             interactive: interactivePayload
-        });
+        };
+    };
+
+    try {
+        await api.post(BASE_URL, buildPayload(process.env.WHATSAPP_FLOW_MODE || undefined));
         console.log(`[WhatsApp Flow] Successfully sent flow ${flowId} (screen: ${screen}) to ${phone}`);
     } catch (error) {
-        console.error('Error sending flow message:', error?.response?.data || error.message);
+        console.error('Error sending flow message:', JSON.stringify(error?.response?.data || error.message));
+
+        // If error indicates draft mode is required, automatically retry with mode: 'draft'
+        const errStr = JSON.stringify(error?.response?.data || '');
+        if (errStr.includes('DRAFT') || errStr.includes('draft') || errStr.includes('not published')) {
+            console.log('[WhatsApp Flow] Retrying with mode: draft...');
+            try {
+                await api.post(BASE_URL, buildPayload('draft'));
+                console.log(`[WhatsApp Flow] Successfully sent flow in draft mode to ${phone}`);
+                return;
+            } catch (retryErr) {
+                console.error('[WhatsApp Flow] Retry in draft mode failed:', JSON.stringify(retryErr?.response?.data || retryErr.message));
+                throw retryErr;
+            }
+        }
         throw error;
     }
 }

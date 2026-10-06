@@ -556,7 +556,7 @@ async function sendBookingFlow(phone, lang = 'hi') {
         const bodyText = lang === 'hi'
             ? '🙏 *श्री महाकालेश्वर मंदिर, उज्जैन*\n\nWhatsApp के अंदर सीधे दर्शन एवं आरती पास बुक करने के लिए कृपया नीचे दिए गए फॉर्म बटन पर टैप करें:'
             : '🙏 *Shri Mahakaleshwar Temple, Ujjain*\n\nTo book your Darshan and Aarti passes directly inside WhatsApp, please tap the button below:';
-        const buttonText = lang === 'hi' ? '📝 फॉर्म खोलें / Book' : '📝 Open Form';
+        const buttonText = lang === 'hi' ? 'पास बुक करें' : 'Book Pass';
 
         await whatsappApi.sendFlowMessage(
             phone,
