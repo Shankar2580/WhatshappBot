@@ -35,14 +35,19 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         }
     }
 
-    let state = stateManager.getState(phone);
-
-    if (state === STATES.IDLE) {
-        // Direct WhatsApp Flow form trigger
-        if (msgText === 'form' || msgText === 'booking form' || (msgText === 'book' && process.env.WHATSAPP_FLOW_ID)) {
+    // If user sends any greeting or start trigger, reset session and trigger flow if available
+    const isStartCommand = ['hi', 'hello', 'hey', 'book', 'form', 'booking', 'start', 'menu', 'darshan', 'reset'].includes(msgText);
+    if (isStartCommand) {
+        stateManager.clearUser(phone);
+        if (process.env.WHATSAPP_FLOW_ID) {
             const flowSent = await sendBookingFlow(phone, lang);
             if (flowSent) return;
         }
+    }
+
+    let state = stateManager.getState(phone);
+
+    if (state === STATES.IDLE) {
         if (msgText === 'book' || msgText === 'hi' || msgText === 'hello') {
             stateManager.setState(phone, STATES.ASK_LANGUAGE);
 
@@ -69,6 +74,15 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
         if (buttonPayload === 'lang_en' || buttonPayload === 'lang_hi') {
             const selectedLang = buttonPayload === 'lang_en' ? 'en' : 'hi';
             stateManager.setTempData(phone, { language: selectedLang });
+
+            if (process.env.WHATSAPP_FLOW_ID) {
+                const flowSent = await sendBookingFlow(phone, selectedLang);
+                if (flowSent) {
+                    stateManager.clearUser(phone);
+                    return;
+                }
+            }
+
             stateManager.setState(phone, STATES.CHOOSE_AARTI);
 
             const bodyText = t(selectedLang, 'choose_aarti');
