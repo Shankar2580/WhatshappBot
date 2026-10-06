@@ -558,7 +558,9 @@ async function sendBookingFlow(phone, lang = 'hi') {
 }
 
 async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
-    let { aarti_type, booking_date, num_people, devotee_name, devotee_name_2, devotee_name_3, devotee_name_4, id_type, id_number } = flowData;
+    let { aarti_type, booking_date, num_people, devotee_name, devotee_name_2, devotee_name_3, devotee_name_4, id_type, id_number, devotee_photos } = flowData;
+
+    console.log(`[WhatsApp Flow] Received flow submission for ${phone}:`, JSON.stringify(flowData));
 
     // Standardize YYYY-MM-DD from flow datepicker to DD/MM/YYYY
     if (booking_date && /^\d{4}-\d{2}-\d{2}$/.test(booking_date)) {
@@ -637,6 +639,51 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
         return;
     }
 
+    // Parse and download devotee photos from WhatsApp Flow
+    let photoMediaIds = [];
+    if (Array.isArray(devotee_photos)) {
+        photoMediaIds = devotee_photos.map(p => (typeof p === 'object' && p !== null ? p.id || p.media_id || p.file_id || String(p) : String(p))).filter(Boolean);
+    } else if (typeof devotee_photos === 'string' && devotee_photos.trim()) {
+        try {
+            const parsed = JSON.parse(devotee_photos);
+            if (Array.isArray(parsed)) {
+                photoMediaIds = parsed.map(p => (typeof p === 'object' && p !== null ? p.id || p.media_id || p.file_id || String(p) : String(p))).filter(Boolean);
+            } else if (typeof parsed === 'object' && parsed !== null) {
+                const idVal = parsed.id || parsed.media_id || parsed.file_id;
+                if (idVal) photoMediaIds = [String(idVal)];
+            } else {
+                photoMediaIds = [devotee_photos.trim()];
+            }
+        } catch {
+            photoMediaIds = [devotee_photos.trim()];
+        }
+    }
+
+    let primaryPhotoPath = null;
+    let savedPhotoPaths = [];
+    if (photoMediaIds.length > 0) {
+        const uploadsDir = path.join(__dirname, 'public', 'uploads');
+        if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        for (let i = 0; i < photoMediaIds.length; i++) {
+            try {
+                const mediaId = photoMediaIds[i];
+                console.log(`[Flow Photo] Downloading photo ${i + 1}/${photoMediaIds.length} (Media ID: ${mediaId})...`);
+                const buf = await whatsappApi.downloadMediaBuffer(mediaId);
+                const filePath = path.join(uploadsDir, `${bookingRef}_photo_${i + 1}.jpg`);
+                fs.writeFileSync(filePath, buf);
+                savedPhotoPaths.push(filePath);
+                if (i === 0) {
+                    primaryPhotoPath = filePath;
+                }
+                console.log(`[Flow Photo] Successfully saved photo ${i + 1} to ${filePath}`);
+            } catch (dlErr) {
+                console.warn(`[Flow Photo] Could not download photo ${i + 1}:`, dlErr.message);
+            }
+        }
+    }
+
     // Save confirmed booking in database
     await database.saveBooking({
         booking_ref: bookingRef,
@@ -645,7 +692,7 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
         aarti_type: aarti,
         num_people: count,
         guests_data: JSON.stringify(guestsList),
-        photo_id: '',
+        photo_id: savedPhotoPaths.length > 0 ? savedPhotoPaths.join(';') : (photoMediaIds.join(',') || ''),
         booking_date: booking_date,
         slot_time: slot,
         status: 'confirmed'
@@ -653,9 +700,12 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
 
     // Notify devotee immediately
     const devoteeNamesText = guestsList.map(g => g.kyc_verified_name).join(', ');
+    const photoCountText = savedPhotoPaths.length > 0 ? `\n• *फोटो:* ${savedPhotoPaths.length} सुरक्षित रूप से प्राप्त` : '';
+    const photoCountTextEn = savedPhotoPaths.length > 0 ? `\n• *Photo(s):* ${savedPhotoPaths.length} attached` : '';
+
     const confirmText = lang === 'hi'
-        ? `🔱 *हर हर महादेव!*\n\nआपका फॉर्म सफलतापूर्वक प्राप्त हो गया है:\n• *भक्तगण:* ${devoteeNamesText}\n• *सेवा:* ${aarti}\n• *दर्शन तिथि:* ${booking_date}\n• *समय स्लॉट:* ${slot}\n• *कुल भक्त:* ${count} व्यक्ति\n• *बुकिंग संदर्भ:* *${bookingRef}*\n\n📄 आपका आधिकारिक डिजिटल पास तैयार किया जा रहा है...`
-        : `🔱 *Har Har Mahadev!*\n\nYour booking form has been received successfully:\n• *Devotee(s):* ${devoteeNamesText}\n• *Service:* ${aarti}\n• *Date:* ${booking_date}\n• *Slot:* ${slot}\n• *Devotees:* ${count} Person(s)\n• *Booking Ref:* *${bookingRef}*\n\n📄 Generating your official digital Darshan pass now...`;
+        ? `🔱 *हर हर महादेव!*\n\nआपका फॉर्म सफलतापूर्वक प्राप्त हो गया है:\n• *भक्तगण:* ${devoteeNamesText}\n• *सेवा:* ${aarti}\n• *दर्शन तिथि:* ${booking_date}\n• *समय स्लॉट:* ${slot}\n• *कुल भक्त:* ${count} व्यक्ति${photoCountText}\n• *बुकिंग संदर्भ:* *${bookingRef}*\n\n📄 आपका आधिकारिक डिजिटल पास तैयार किया जा रहा है...`
+        : `🔱 *Har Har Mahadev!*\n\nYour booking form has been received successfully:\n• *Devotee(s):* ${devoteeNamesText}\n• *Service:* ${aarti}\n• *Date:* ${booking_date}\n• *Slot:* ${slot}\n• *Devotees:* ${count} Person(s)${photoCountTextEn}\n• *Booking Ref:* *${bookingRef}*\n\n📄 Generating your official digital Darshan pass now...`;
     
     await whatsappApi.sendTextMessage(phone, confirmText);
 
@@ -677,7 +727,7 @@ async function handleFullFlowSubmission(phone, flowData, lang = 'hi') {
             guests: guestsList,
             payment_id: 'PASS_CONFIRMED',
             amount_paid: totalPrice,
-            selfie_path: null
+            selfie_path: primaryPhotoPath
         }, pdfPath);
 
         const mediaId = await whatsappApi.uploadMedia(pdfPath, 'application/pdf');
