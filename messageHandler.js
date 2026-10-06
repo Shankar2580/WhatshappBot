@@ -48,6 +48,11 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     let state = stateManager.getState(phone);
 
     if (state === STATES.IDLE) {
+        if (process.env.WHATSAPP_FLOW_ID) {
+            const flowSent = await sendBookingFlow(phone, lang);
+            if (flowSent) return;
+        }
+
         if (msgText === 'book' || msgText === 'hi' || msgText === 'hello') {
             stateManager.setState(phone, STATES.ASK_LANGUAGE);
 
@@ -110,6 +115,15 @@ async function processMessage(phone, text, buttonPayload, imagePayload) {
     if (state === STATES.CHOOSE_AARTI) {
         if (buttonPayload) {
             stateManager.setTempData(phone, { aarti: buttonPayload });
+
+            if (process.env.WHATSAPP_FLOW_ID) {
+                const flowSent = await sendBookingFlow(phone, lang);
+                if (flowSent) {
+                    stateManager.clearUser(phone);
+                    return;
+                }
+            }
+
             stateManager.setState(phone, STATES.ASK_DATE_FLOW);
 
             const bodyText = t(lang, 'aarti_selected', buttonPayload);
